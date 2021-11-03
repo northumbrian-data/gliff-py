@@ -1,10 +1,62 @@
-from flask import current_app
+import base64
+from decouple import config, UndefinedValueError
 from loguru import logger
 from etebase import Client, Account
-import time
-import json
 from PIL import Image
-from . import convert
+from io import BytesIO
+
+## HELPER FUNCTIONS
+
+
+def get_value(env_variable):
+    """
+    Use this if you want to enforce (in order of priority):
+        1. a passed parameter (env_variable)
+        2. an environment variable being set
+        3. an env var being set in .env
+    """
+    # check for actually passed value first
+    try:
+        passed_value = globals()[env_variable]
+        print(passed_value)
+        if passed_value is not None:
+            return passed_value
+        else:
+            # otherwise check for env variable
+            env_value = config(env_variable)
+            return env_value
+    except KeyError:
+        raise UndefinedValueError(f"{env_variable} not found.")
+
+
+def base64_to_pil_image(img_base64):
+    """Convert a base64-encoded image into a PIL Image object"""
+
+    img_bytes = base64.b64decode(img_base64)
+    img_file = BytesIO(img_bytes)
+    return Image.open(img_file).convert("RGB")
+
+
+def pil_to_base64_image(img_pil, is_thumbnail=False):
+    """Convert a PIL Image object to a base64-encoded image (in bytes)"""
+
+    img_file = BytesIO()
+    img_pil.save(img_file, format="PNG")
+    img_bytes = img_file.getvalue()
+    img_base64 = base64.b64encode(img_bytes).decode()
+    if is_thumbnail:
+        img_base64 = "data:image/png;base64,{}".format(img_base64)
+    return img_base64
+
+
+def get_thumbnail_from_pil_image(img_pil):
+    """Get base64-encoded thumbnail (in bytes) from PIL image"""
+
+    size = 128, 128
+    img_pil.thumbnail(size, Image.ANTIALIAS)
+    return pil_to_base64_image(img_pil, True)
+
+## SDK FUNCTIONS
 
 
 def login():
@@ -17,11 +69,11 @@ def login():
     """
 
     logger.info("logging in to STORE...")
-    client = Client("client-name", current_app.config["STORE_SERVER_URL"])
+    client = Client("client-name", get_value("STORE_SERVER_URL"))
     etebase = Account.login(
         client,
-        current_app.config["STORE_USERNAME"],
-        current_app.config["STORE_PASSWORD"],
+        get_value("STORE_USERNAME"),
+        get_value("STORE_PASSWORD"),
     )
     logger.success("logged in to STORE")
 
@@ -160,9 +212,7 @@ def get_image_item_content(etebase, col_uid, image_uid):
     return item_mng, col_mng, item.content.decode()
 
 
-def create_collection_tile(
-    col_mng, col_uid, item_uid, thumbnail, metadata=dict(), collection=None
-):
+def create_collection_tile(col_mng, col_uid, item_uid, thumbnail, metadata=dict(), collection=None):
     """Create, ecrypt and upload a new tile to the STORE collection.
 
     Parameters
@@ -289,7 +339,5 @@ def create_image_item(col_mng, col_uid, name, image, item_mng=None, metadata={})
     logger.success("uploaded new image item, uid: {}".format(item.uid))
 
     # add a new tile to the collection's content
-    create_collection_tile(
-        col_mng, col_uid, item.uid, thumbnail, col_metadata, collection
-    )
+    create_collection_tile(col_mng, col_uid, item.uid, thumbnail, col_metadata, collection)
     return item.uid

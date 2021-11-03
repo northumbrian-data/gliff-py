@@ -20,9 +20,15 @@ name = "gliff"
 version = "0.1.0"
 description = "gliff.ai SDK - a Python SDL for developing AI-in-the-loop trusted services for the gliff.ai platform"
 authors = ["Chas Nelson <chas@gliff.ai>"]
+license = "AGPL-3.0-or-later"
+include = ["LICENSE",]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+python-decouple = "^3.5"
+loguru = "^0.5.3"
+etebase = "^0.31.2"
+Pillow = "^8.4.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
