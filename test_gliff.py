@@ -10,7 +10,7 @@ def test_get_value():
     except UndefinedValueError as e:
         print(e)
         assert str(e) == "TEST_VARIABLE not found."
-    
+
     # check we get a value when there is an env variable but no local
     # FIXME
     # os.environ["TEST_VARIABLE"] = "test_value"

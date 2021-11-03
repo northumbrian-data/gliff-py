@@ -22,9 +22,9 @@ jobs:
       - name: Setup dependencies
         run: poetry install
       - name: Lint
-        run: poetry run flake8 gliff/*
+        run: poetry run flake8 *.py
       - name: Format
-        run: black --verbose --diff gliff/*
+        run: black --verbose --diff *.py
   Test:
     runs-on: ubuntu-latest
     timeout-minutes: 2

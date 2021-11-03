@@ -1,4 +1,6 @@
 import base64
+import json
+import time
 from decouple import config, UndefinedValueError
 from loguru import logger
 from etebase import Client, Account
@@ -55,6 +57,7 @@ def get_thumbnail_from_pil_image(img_pil):
     size = 128, 128
     img_pil.thumbnail(size, Image.ANTIALIAS)
     return pil_to_base64_image(img_pil, True)
+
 
 ## SDK FUNCTIONS
 
@@ -290,9 +293,9 @@ def create_image_item(col_mng, col_uid, name, image, item_mng=None, metadata={})
     # checks on type of image param
     if type(image) == Image.Image:
         image_pil = image
-        image = convert.pil_to_base64_image(image)
+        image = pil_to_base64_image(image)
     elif isinstance(image, str):
-        image_pil = convert.base64_to_pil_image(image)
+        image_pil = base64_to_pil_image(image)
     else:
         logger.error("image should be of type PIL.Image.Image or str")
         return
@@ -323,7 +326,7 @@ def create_image_item(col_mng, col_uid, name, image, item_mng=None, metadata={})
     }
 
     # make thumbnail
-    thumbnail = convert.get_thumbnail_from_pil_image(image_pil)
+    thumbnail = get_thumbnail_from_pil_image(image_pil)
 
     # make collection metadata
     col_metadata = {
