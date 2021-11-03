@@ -31,7 +31,7 @@ etebase = "^0.31.2"
 Pillow = "^8.4.0"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "^6.2"
 flake8 = "^4.0.1"
 black = "^21.10b0"
 
