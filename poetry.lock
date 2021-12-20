@@ -68,7 +68,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "etebase"
-version = "0.31.2"
+version = "0.31.4"
 description = "Python client library for Etebase"
 category = "main"
 optional = false
@@ -294,7 +294,7 @@ dev = ["pytest (>=4.6.2)", "black (>=19.3b0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "8f65011936a25792073ee92da2abf2d9456ee688afbb293a278865a774822aa4"
+content-hash = "2bd8ba7bc72197c8d1ca7a6b313f921bc85813af7bfc7f2d1051e2f5ac84c9e9"
 
 [metadata.files]
 atomicwrites = [
@@ -318,26 +318,26 @@ colorama = [
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
 etebase = [
-    {file = "etebase-0.31.2-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:bd5bc98c96c0285f89b60bb64add6c29d4d3627f390e8f43b943c979b2efcc54"},
-    {file = "etebase-0.31.2-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:02703ed5de017a6018cd041b54a105c22c1b4f3eceeb7874285b337d87f9a063"},
-    {file = "etebase-0.31.2-cp36-cp36m-manylinux2014_aarch64.whl", hash = "sha256:fe4d98c1d4f4cf37173fad4b044f0b6f0f8b8ea54bf78ea51335491ad6298bf2"},
-    {file = "etebase-0.31.2-cp36-cp36m-win_amd64.whl", hash = "sha256:5f113b3518f9048945a1ca67f19eb874b6b1625c8d6fe90e4aa34e36cada268c"},
-    {file = "etebase-0.31.2-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:5d75e2263c606485ba326c7f7a0b26b71aed5bf2b6a7e0daa850e0698b684a0c"},
-    {file = "etebase-0.31.2-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:85abc104a85032580fc263cd32b9a7b86e16fd5df177d1a9ca0df4b47c194a96"},
-    {file = "etebase-0.31.2-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:7e2db4b91eaca4178d96c468d92d32d975c8801e846e04e114c48590720ca9b8"},
-    {file = "etebase-0.31.2-cp37-cp37m-manylinux2014_aarch64.whl", hash = "sha256:cdc70af8d2271c1837f4ea577562e37fd4746ecdecd75919979f0725f9fd4932"},
-    {file = "etebase-0.31.2-cp37-cp37m-win_amd64.whl", hash = "sha256:189869ae5ce95b0605bf447c400f78859da41cc6d8d3d219212ed1e5b94b3a6e"},
-    {file = "etebase-0.31.2-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:00bc985269995cdc0ecff1218516b5fe8d90123d3b05f80819e4cdb81f02c2b9"},
-    {file = "etebase-0.31.2-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:c9f8250e32f5b84397c76a2c8bab9d7171e007ff0e67f50b4687cac57445b4a9"},
-    {file = "etebase-0.31.2-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:a7bda8ae487941a3285b89ba4decec9cdecca63e1a8229345a60b92544127c27"},
-    {file = "etebase-0.31.2-cp38-cp38-manylinux2014_aarch64.whl", hash = "sha256:044ed266ad1f7c5badd9274351933af42ed7bbee74d455bf1898f3dfcf178e20"},
-    {file = "etebase-0.31.2-cp38-cp38-win_amd64.whl", hash = "sha256:19df021287389c5576331af7e8b6c65861957ff9b4de67c09317cb0386411842"},
-    {file = "etebase-0.31.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:e32154d2c9b687abd2755343b2d045ee524cbb47dd3db13586c7dc98fe9aff58"},
-    {file = "etebase-0.31.2-cp39-cp39-manylinux2010_i686.whl", hash = "sha256:2f8fc50b3d9ff718523c3cb869126993709ea895ec12c605733252caaea0f47f"},
-    {file = "etebase-0.31.2-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:5af55b9ec1cc353927a1f39d42beeaae9c40dfe19f7468e8608a6515f33feea5"},
-    {file = "etebase-0.31.2-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:befc581c3b9730f48853f54b231fadb3140b1ba2d7ce4379f08e904e399a370e"},
-    {file = "etebase-0.31.2-cp39-cp39-win_amd64.whl", hash = "sha256:496c2da110c8ecabb016932fb68eae3058870a81cfbac97f07f2f68c3bcadf4e"},
-    {file = "etebase-0.31.2.tar.gz", hash = "sha256:72c01ad3b99e0668ccda32f7c62c30146cfdf56a6343742fbea577c3c5f40fde"},
+    {file = "etebase-0.31.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:bdea288e5644d4f0c767dceeec0d60f7394bd3fec13148b1288a4990b13354ad"},
+    {file = "etebase-0.31.4-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6d4184fe1027053429fc3181ce7ed900e162e04121e14dc84416df54d73b0f21"},
+    {file = "etebase-0.31.4-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:5b18a73b092f6fc06d5ecce1180cd84d42c310fcfbe32e1139fe89847ab6efb5"},
+    {file = "etebase-0.31.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c6ccc3ada67ff5f32e2f6dc98d3968ec09f6d38ac8d066853d465d701c064e94"},
+    {file = "etebase-0.31.4-cp310-cp310-win_amd64.whl", hash = "sha256:762ab7001bbfa655cf9bd1375590c2bd291008b9405b36a947b37c92e904bbb0"},
+    {file = "etebase-0.31.4-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7060e8afafe3c24cd993156dfb2a2a98fb51642b191a4348946a53a22f1b02ca"},
+    {file = "etebase-0.31.4-cp37-cp37m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:68ea343089f6e6a5e4353144eca54032444d8fd7c8efa810aad009460c923f06"},
+    {file = "etebase-0.31.4-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c15a5fa520adef77f2a385f56087fa5c8eb93dec6e3e8c6a31b17bde32c213d7"},
+    {file = "etebase-0.31.4-cp37-cp37m-win_amd64.whl", hash = "sha256:83f06a5654e9729b44f9c215c3f122728585f1b408070c6c372de7021bcfb053"},
+    {file = "etebase-0.31.4-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:9dcf6f8c6ed1158f127af65a5a2955b1933e0ed742b4c1879292c14ffe8156c8"},
+    {file = "etebase-0.31.4-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:21feef939931c60c6afa8dbd7898081eba0cde3ecca9a46a1651ea19b388be8b"},
+    {file = "etebase-0.31.4-cp38-cp38-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e0470a4786f41eae4911d1ecda7dce19939b01cebaaab2e529d79a0f4bf65ff5"},
+    {file = "etebase-0.31.4-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:519bb3eac8da97f86f9c3a9b331d45e7d608e9c4047ea9f5e78f2ae5aeec3b8f"},
+    {file = "etebase-0.31.4-cp38-cp38-win_amd64.whl", hash = "sha256:e0604e02252adb3fcf7b8b995fce10cfa36085d2f0e33905649337761d6abfbe"},
+    {file = "etebase-0.31.4-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:535a8261843323c72cfcaac216f15e704c50227ed4e1be589e3b62fec93d2be5"},
+    {file = "etebase-0.31.4-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4def5d43e0ac6b4a4535339df4f35073e721e39f3afed375958bb3e60905527d"},
+    {file = "etebase-0.31.4-cp39-cp39-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:43bbb506403e12528dc0421a3ddcc9081ea40b67b53c990596050fb4f54cc7d9"},
+    {file = "etebase-0.31.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8598d4af6ba8e60484fdb596547aa93059bb9ee62857e3ef1e615d7b152466c9"},
+    {file = "etebase-0.31.4-cp39-cp39-win_amd64.whl", hash = "sha256:14dc0a0e54d1e996d692cfbd68ffffb2da6fb622f19a24bf7a74709da35b15e6"},
+    {file = "etebase-0.31.4.tar.gz", hash = "sha256:6b4359b17669b4affb1e432005a7fff6f7d60e016b912083aedb194ab6bad056"},
 ]
 flake8 = [
     {file = "flake8-4.0.1-py2.py3-none-any.whl", hash = "sha256:479b1304f72536a55948cb40a32dce8bb0ffe3501e26eaf292c7e60eb5e0428d"},
