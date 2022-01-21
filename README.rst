@@ -41,7 +41,7 @@ Looking for something specific? 🔍
 Contribute
 -----
 
-`{{back to navigation}}`<#table-of-contents`_
+`{{back to navigation}} <#table-of-contents>`_
 
 | We welcome all contributors and any contributions on this project through the likes of feedback on or suggesting features and enhancements, raising bug problems, reporting on security vulnerabilities, reviewing code, requesting or creating tests, user testing etc. to ensure gliff.ai can help enable the best and biggest positive impact possible. 
 | 
@@ -60,7 +60,7 @@ Contribute
 Contact
 -----
 
-`{{back to navigation}}`<#table-of-contents`_
+`{{back to navigation}} <#table-of-contents>`_
 
 | Need some help? 🤔 Have a question? 🧠
 | Reach out to the gliff.ai team at `community@gliff.ai`_ or on our `GitHub discussions`_.
@@ -71,7 +71,7 @@ Contact
 License
 -----
 
-`{{back to navigation}}`<#table-of-contents`_
+`{{back to navigation}} <#table-of-contents>`_
 
 | This code is licensed under a `GNU AGPLv3 license`_ 📝
 | Curious about our reasoning for this? Read about them here_!
