@@ -44,9 +44,10 @@ Contact
 [{{back to navigation}}](#table-of-contents)
 
 Need some help? 🤔 Have a question? 🧠 \
-Reach out to the gliff.ai team at `community@gliff.ai`_ or on GitHub.
+Reach out to the gliff.ai team at `community@gliff.ai`_ or on our _`GitHub discussions`_.
 
 .. _`community@gliff.ai`: mailto:community@gliff.ai?subject=[GitHub]
+.. _`GitHub discussions`: https://github.com/gliff-ai/roadmap/discussions/landing
 
 License
 -----
