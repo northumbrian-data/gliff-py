@@ -1,19 +1,17 @@
 gliff.ai SDK
 =====
 
-|Latest Tag| |Number of Open Issues| |Number of Open Pull Requests| |Number of Contributors| |Repository Size| |Repo License|
+|Repo License| |Repository Size| |Latest Tag| |Number of Open Issues| |Number of Open Pull Requests|
 
-.. |Latest Tag| image:: https://img.shields.io/github/v/tag/gliff-ai/gliff-sdk?&label=latest_tag&style=flat-square&color=f2f2f2
+.. |Repo License| image:: https://img.shields.io/github/license/gliff-ai/gliff-sdk?color=0078FF&style=flat-square
+    :target: https://github.com/gliff-ai/gliff-sdk#readme
+.. |Repository Size| image:: https://img.shields.io/github/repo-size/gliff-ai/gliff-sdk?style=flat-square&color=f2f2f2
+    :target: https://github.com/gliff-ai/gliff-sdk#readme
+.. |Latest Tag| image:: https://img.shields.io/github/v/tag/gliff-ai/gliff-sdk?&label=latest%20tag&style=flat-square&color=f2f2f2w
     :target: https://github.com/gliff-ai/gliff-sdk#readme
 .. |Number of Open Issues| image:: https://img.shields.io/github/issues/gliff-ai/gliff-sdk?style=flat-square&color=yellow
     :target: https://github.com/gliff-ai/gliff-sdk#readme
 .. |Number of Open Pull Requests| image:: https://img.shields.io/github/issues-pr/gliff-ai/gliff-sdk?style=flat-square&color=yellow
-    :target: https://github.com/gliff-ai/gliff-sdk#readme
-.. |Number of Contributors| image:: https://img.shields.io/github/contributors/gliff-ai/gliff-sdk?style=flat-square&color=yellow
-    :target: https://github.com/gliff-ai/gliff-sdk#readme
-.. |Repository Size| image:: https://img.shields.io/github/repo-size/gliff-ai/gliff-sdk?style=flat-square&color=red
-    :target: https://github.com/gliff-ai/gliff-sdk#readme
-.. |Repo License| image:: https://img.shields.io/github/license/gliff-ai/gliff-sdk?color=0078FF&style=flat-square
     :target: https://github.com/gliff-ai/gliff-sdk#readme
 
 👋 **Welcome in!** 👋
