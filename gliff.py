@@ -1,15 +1,18 @@
 import base64
 import json
 import time
+from unicodedata import numeric
 from decouple import config, UndefinedValueError
 from loguru import logger
 from etebase import Client, Account
 from PIL import Image
 from io import BytesIO
+from typing import Union, Optional, Any
 
 
-def get_value(env_variable):
-    """Use this if you want to enforce (in order of priority):
+def get_value(env_variable: str) -> Any:
+    """
+    Use this if you want to enforce (in order of priority):
     1. a passed parameter (env_variable)
     2. an environment variable being set
     3. an env var being set in .env
@@ -27,7 +30,7 @@ def get_value(env_variable):
         raise UndefinedValueError("{} not found.".format(env_variable))
 
 
-def base64_to_pil_image(img_base64):
+def base64_to_pil_image(img_base64: Union[str, bytes]) -> Image.Image:
     """Convert a base64-encoded image into a PIL Image object"""
 
     img_bytes = base64.b64decode(img_base64)
@@ -35,7 +38,7 @@ def base64_to_pil_image(img_base64):
     return Image.open(img_file).convert("RGB")
 
 
-def pil_to_base64_image(img_pil, is_thumbnail=False):
+def pil_to_base64_image(img_pil: Image.Image, is_thumbnail: Optional[bool] = False) -> str:
     """Convert a PIL Image object to a base64-encoded image (in bytes)"""
 
     img_file = BytesIO()
@@ -47,7 +50,7 @@ def pil_to_base64_image(img_pil, is_thumbnail=False):
     return img_base64
 
 
-def _get_thumbnail_from_pil_image(img_pil):
+def _get_thumbnail_from_pil_image(img_pil: Image.Image) -> str:
     """Get base64-encoded thumbnail (in bytes) from PIL image"""
 
     size = 128, 128
@@ -55,21 +58,21 @@ def _get_thumbnail_from_pil_image(img_pil):
     return pil_to_base64_image(img_pil, True)
 
 
-def _decode_content(content):
+def _decode_content(content: bytes) -> Any:
     """Extract and decode collection's or item's content, from binary to dict."""
     return json.loads(content.decode())
 
 
-def _encode_content(decoded_content):
+def _encode_content(decoded_content: Any) -> bytes:
     """Encode collection's or item's content, from dict to binary."""
     return json.dumps(decoded_content, separators=(",", ":")).encode()
 
 
-def _get_current_time():
+def _get_current_time() -> int:
     return int(round(time.time() * 1000))
 
 
-def is_empty_annotation(annotation):
+def is_empty_annotation(annotation: dict[str, Any]) -> bool:
     return (
         (len(annotation["spline"]["coordinates"]) == 0)
         & (len(annotation["brushStrokes"]) == 0)
@@ -78,18 +81,18 @@ def is_empty_annotation(annotation):
 
 
 def create_brush_stroke(
-    coordinates,
-    spaceTimeInfo={
+    coordinates: list[Union[int, float]],
+    spaceTimeInfo: Optional[dict[str, Any]] = {
         "z": 0,
         "t": 0,
     },
-    brush={
+    brush: Optional[dict[str, Any]] = {
         "radius": 0.5,
         "type": "paint",
         "color": "rgba(170, 0, 0, 0.5)",
         "is3D": False,
     },
-):
+) -> Optional[dict[str, Any]]:
     return {
         "coordinates": coordinates,
         "spaceTimeInfo": spaceTimeInfo,
@@ -98,23 +101,23 @@ def create_brush_stroke(
 
 
 def create_annotation(
-    toolbox,
-    labels=[],
-    spline={
+    toolbox: str,
+    labels: list[str] = [],
+    spline: Optional[dict[str, Any]] = {
         "coordinates": [],
         "spaceTimeInfo": {"z": 0, "t": 0},
         "isClosed": False,
     },
-    bounding_box={
+    bounding_box: Optional[dict[str, Any]] = {
         "coordinates": {
             "topLeft": {"x": None, "y": None},
             "bottomRight": {"x": None, "y": None},
         },
         "spaceTimeInfo": {"z": 0, "t": 0},
     },
-    brush_strokes=[],
-    parameters={},
-):
+    brush_strokes: Optional[list[Optional[dict[str, Any]]]] = [],
+    parameters: Optional[dict[str, Any]] = {},
+) -> dict[str, Any]:
     return {
         "toolbox": toolbox,
         "labels": labels,
@@ -125,7 +128,7 @@ def create_annotation(
     }
 
 
-def _get_image_data(image):
+def _get_image_data(image: Union[str, Image.Image]) -> Union[None, dict[str, Any]]:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
@@ -157,7 +160,7 @@ def _get_image_data(image):
     }
 
 
-def _get_collection_and_manager(etebase, col_uid, etedata={}):
+def _get_collection_and_manager(etebase: Any, col_uid: int, etedata: dict[str, Any] = {}) -> dict[str, Any]:
     """Get collection manager and collection.
 
     Parameters
@@ -183,7 +186,7 @@ def _get_collection_and_manager(etebase, col_uid, etedata={}):
     return etedata
 
 
-def _get_all_etedata(etebase, col_uid, etedata={}):
+def _get_all_etedata(etebase: Any, col_uid: int, etedata: dict[str, Any] = {}) -> Any:
     """Get etebase item manager for a given collection with uid == col_uid.
 
     Parameters
@@ -214,7 +217,7 @@ def _get_all_etedata(etebase, col_uid, etedata={}):
     return etedata
 
 
-def login(username, password, server_url):
+def login(username: str, password: str, server_url: str) -> Any:
     """Log in to STORE.
     Parameters
     ----------
@@ -244,7 +247,7 @@ def login(username, password, server_url):
     return etebase
 
 
-def logout(etebase):
+def logout(etebase: Any) -> None:
     """Log out of STORE."""
 
     logger.info("logging out...")
@@ -252,7 +255,7 @@ def logout(etebase):
     logger.success("logged out")
 
 
-def _accept_pending_invitations(etebase):
+def _accept_pending_invitations(etebase: Any) -> None:
     """Accept all pending invitations to join a STORE collection.
 
     Parameters
@@ -273,7 +276,7 @@ def _accept_pending_invitations(etebase):
         logger.success("accepted invitation {}.".format(invitation))
 
 
-def _leave_collection(etebase, col_uid, etedata={}):
+def _leave_collection(etebase: Any, col_uid: int, etedata: dict[str, Any] = {}) -> None:
     """Leave a collection.
 
     Parameters
@@ -293,7 +296,7 @@ def _leave_collection(etebase, col_uid, etedata={}):
     logger.info("left collection {}.".format(col_uid))
 
 
-def get_collection_item(etebase, col_uid, item_uid, etedata={}):
+def get_collection_item(etebase: Any, col_uid: int, item_uid: int, etedata: dict[str, Any] = {}) -> Any:
     """Retrieve a collection's item.
 
     Parameters
@@ -324,7 +327,7 @@ def get_collection_item(etebase, col_uid, item_uid, etedata={}):
     return item
 
 
-def _create_gallery_tile(etedata, item_uid, thumbnail, metadata={}):
+def _create_gallery_tile(etedata: Any, item_uid: int, thumbnail: str, metadata: dict[str, Any] = {}) -> None:
     """Create, ecrypt and upload a new tile to the STORE collection.
 
     Parameters
@@ -368,7 +371,7 @@ def _create_gallery_tile(etedata, item_uid, thumbnail, metadata={}):
     logger.success("updated collection's content")
 
 
-def _update_gallery_tile(etedata, item_uid, tile_data={}):
+def _update_gallery_tile(etedata: Any, item_uid: int, tile_data: dict[str, Any] = {}) -> None:
     """Update a tile in the STORE collection.
     Parameters
     ----------
@@ -379,7 +382,13 @@ def _update_gallery_tile(etedata, item_uid, tile_data={}):
     tile_data: dict (optional)
     """
 
-    def update_tile(tile: dict, metadata=None, annotationUID=None, annotationComplete=None, **kwargs):
+    def update_tile(
+        tile: dict[str, Any],
+        metadata: Optional[dict[str, Any]] = None,
+        annotationUID: Optional[dict[str, str]] = None,
+        annotationComplete: Optional[dict[str, str]] = None,
+        **kwargs: Any
+    ) -> dict[str, Any]:
         if metadata is not None:
             tile["metadata"].update(metadata)
         if annotationUID is not None:
@@ -406,7 +415,14 @@ def _update_gallery_tile(etedata, item_uid, tile_data={}):
     logger.success("updated collection's content")
 
 
-def create_image_item(etebase, col_uid, name, image, metadata={}, etedata={}):
+def create_image_item(
+    etebase: Any,
+    col_uid: int,
+    name: str,
+    image: Union[str, Image.Image],
+    metadata: dict[str, Any] = {},
+    etedata: dict[str, Any] = {},
+) -> Union[int, None]:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
@@ -417,14 +433,14 @@ def create_image_item(etebase, col_uid, name, image, metadata={}, etedata={}):
         Collection uid.
     name: string
         Name of the new item.
-    image: PIL.Image.Image or str
+    image: Union[str, Image.Image]
         Image uploaded to the new item.
     metadata: dict
         Metadata to be stored inside the new item (optional).
     etedata:
         Etebase data (i.e., collection manager, collection, item manager)
     -------
-    image_uid: int
+    image_uid: Union[int, None]
         New image item's uid.
     """
 
@@ -434,7 +450,7 @@ def create_image_item(etebase, col_uid, name, image, metadata={}, etedata={}):
 
     image_data = _get_image_data(image)
     if image_data is None:
-        return
+        return None
 
     # place the image in the expected array structure and stringify the result
     item_content = image_data["encoded_image"]
@@ -473,7 +489,9 @@ def create_image_item(etebase, col_uid, name, image, metadata={}, etedata={}):
     return item.uid
 
 
-def update_image_metadata(etebase, col_uid, item_uid, metadata, etedata={}):
+def update_image_metadata(
+    etebase: Any, col_uid: int, item_uid: int, metadata: dict[str, Any], etedata: dict[str, Any] = {}
+) -> None:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
@@ -510,7 +528,9 @@ def update_image_metadata(etebase, col_uid, item_uid, metadata, etedata={}):
     logger.success("updated image item's metadata, uid: {}".format(item.uid))
 
 
-def get_annotation_uid(etebase, col_uid, image_item_uid, username, etedata={}):
+def get_annotation_uid(
+    etebase: Any, col_uid: int, image_item_uid: int, username: str, etedata: dict[str, Any] = {}
+) -> Union[int, None]:
     """Check whether there exists an annotation for an image item with uid equal to
     image_item_uid and returns the annotation uid, otherwise returns None.
 
@@ -545,14 +565,14 @@ def get_annotation_uid(etebase, col_uid, image_item_uid, username, etedata={}):
 
 
 def create_annotation_item(
-    etebase,
-    col_uid,
-    image_item_uid,
-    username,
-    annotations,
-    metadata={},
-    etedata={},
-):
+    etebase: Any,
+    col_uid: int,
+    image_item_uid: int,
+    username: str,
+    annotations: list[dict[str, Any]],
+    metadata: dict[str, Any] = {},
+    etedata: dict[str, Any] = {},
+) -> int:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
@@ -613,14 +633,14 @@ def create_annotation_item(
 
 
 def update_annotation_item(
-    etebase,
-    col_uid,
-    image_item_uid,
-    username,
-    annotations,
-    metadata={},
-    etedata={},
-    annotation_item_uid=None,
+    etebase: Any,
+    col_uid: int,
+    image_item_uid: int,
+    username: str,
+    annotations: list[dict[str, Any]],
+    metadata: dict[str, Any] = {},
+    etedata: dict[str, Any] = {},
+    annotation_item_uid: Optional[int] = None,
 ):
     """Create, encrypt and upload a new item to the STORE collection.
 
@@ -657,7 +677,7 @@ def update_annotation_item(
 
     logger.info("updating annotation item {}...".format(annotation_item_uid))
 
-    item = get_collection_item(etebase, col_uid, item_uid=annotation_item_uid, etedata=etedata)
+    item = get_collection_item(etebase, col_uid, annotation_item_uid, etedata=etedata)
 
     # update item's metadata
     item.meta = {**item.meta, "modifiedTime": _get_current_time()}
