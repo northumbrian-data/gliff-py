@@ -7,7 +7,6 @@ from etebase import Client, Account, Collection, Item
 from PIL import Image
 from io import BytesIO
 from typing import Union, Optional, Any, List, Dict
-import numpy as np
 
 
 def get_value(env_variable: str) -> Any:
