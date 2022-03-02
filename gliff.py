@@ -143,7 +143,7 @@ def _get_image_data(image: Union[str, Image.Image]) -> Union[None, Dict[str, Any
         A dictionary that includes image width, height, thumbnail and the ecoded image.
     """
 
-    # checks image type and process image
+    # check type of image and process it
     if type(image) == Image.Image:
         image_pil = image
         image = pil_to_base64_image(image)
@@ -196,7 +196,7 @@ def _get_all_col_data(account: Account, col_uid: int, col_data: Dict[str, Any] =
     col_data: Dict
         Etebase collection data (i.e., collection manager, collection, item manager).
     """
-    if "col_mng" or "collection" not in col_data:
+    if "col_mng" not in col_data or "collection" not in col_data:
         _get_collection_and_manager(account, col_uid, col_data)
 
     if "item_mng" not in col_data:
@@ -464,21 +464,26 @@ def create_image_item(
 
     _get_all_col_data(account, col_uid, col_data)
 
+    # process the input image
     image_data = _get_image_data(image)
     if image_data is None:
         return None
 
-    # place the image in the expected array structure and stringify the result
-    item_content = image_data["encoded_image"]
-
+    # create a new gliff.image item and upload it to the collection
     ctime = get_current_time()
     item_metadata = {
         "type": "gliff.image",  # STORE image item type
-        "imageName": name,  # check if this has changed
+        "imageName": name,
         "createdTime": ctime,
         "modifiedTime": ctime,
     }
 
+    item = col_data["item_mng"].create(item_metadata, image_data["encoded_image"])
+    col_data["item_mng"].transaction([item])
+
+    logger.success("image item created.")
+
+    # create a new tile and add this to the collection's content (or gallery)
     tile_data = {
         "metadata": {
             "imageName": name,
@@ -489,12 +494,6 @@ def create_image_item(
         "imageLabels": image_labels,
     }
 
-    # create a new item and upload it to the collection
-    item = col_data["item_mng"].create(item_metadata, item_content)
-    col_data["item_mng"].transaction([item])
-    logger.success("image item created.")
-
-    # add the new tile to the collection's content
     _create_gallery_tile(
         col_data,
         item.uid,
@@ -533,12 +532,13 @@ def update_image_metadata(
 
     logger.info("updating image item's metadata...")
 
+    if not metadata and not image_labels:
+        return None
+
     _get_all_col_data(account, col_uid, col_data)
 
-    # get existing item
     item = get_collection_item(account, col_uid, item_uid, col_data)
 
-    # update image item's time modified (stored in the item's metadata)
     item.meta = {
         **item.meta,
         "modifiedTime": get_current_time(),
@@ -548,7 +548,6 @@ def update_image_metadata(
 
     tile_data = {"metadata": metadata, "imageLabels": image_labels}
 
-    # update image item metadata (stored in the collection's content)
     _update_gallery_tile(col_data, item_uid, tile_data)
 
     logger.success("metadata updated.")
@@ -699,10 +698,7 @@ def create_annotation_item(
 
     _get_all_col_data(account, col_uid, col_data)
 
-    # defined item's content
-    item_content = encode_content(annotations)
-
-    # defined item's metadata
+    # create a new gliff.annotation item and store it in the collection
     ctime = get_current_time()
     item_metadata = {
         "type": "gliff.annotation",
@@ -711,13 +707,14 @@ def create_annotation_item(
         "isComplete": False,
     }
 
-    # create a new item and store it in the collection
+    item_content = encode_content(annotations)
+
     item = col_data["item_mng"].create(item_metadata, item_content)
     col_data["item_mng"].transaction([item])
 
     logger.success("annotation item created.")
 
-    # TODO: add audit
+    # update the info stored in the corresponding gallery tile
     tile_data = {
         "metadata": metadata,
         "annotationUID": {username: item.uid},
@@ -737,7 +734,7 @@ def update_annotation_item(
     metadata: Dict[str, Any] = {},
     col_data: Dict[str, Any] = {},
     annotation_item_uid: Optional[int] = None,
-):
+) -> int:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
@@ -773,26 +770,26 @@ def update_annotation_item(
 
     item = get_collection_item(account, col_uid, annotation_item_uid, col_data=col_data)
 
-    # remove last annotation if empty
+    # if the last annotation is empty, remove it
     prev_annotations = decode_content(item.content)
     if len(prev_annotations) > 0 & is_empty_annotation(prev_annotations[-1]):
         prev_annotations.pop()
 
-    # update item's metadata
+    # update the annotation item and store and store the changes
     item.meta = {**item.meta, "modifiedTime": get_current_time()}
 
-    # update item's content
     item.content = encode_content([*prev_annotations, *annotations])
 
-    # save changes
     col_data["item_mng"].transaction([item])
 
     logger.success("annotation item updated.")
 
-    tile_data = {
-        "metadata": metadata,
-    }
-    _update_gallery_tile(col_data, image_item_uid, tile_data)
+    # if required, update the metadata
+    if metadata:
+        tile_data = {
+            "metadata": metadata,
+        }
+        _update_gallery_tile(col_data, image_item_uid, tile_data)
 
     return item.uid
 
