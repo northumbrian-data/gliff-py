@@ -24,4 +24,4 @@ jobs:
       - name: Lint
         run: poetry run flake8 *.py
       - name: Format
-        run: black --verbose --diff *.py
+        run: poetry run black --verbose --diff *.py
