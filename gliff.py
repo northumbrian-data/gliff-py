@@ -287,7 +287,7 @@ def _leave_collection(account: Account, col_uid: int, col_data: Dict[str, Any] =
     logger.info("leaving collection {}...".format(col_uid))
     memeber_mng = col_data["col_mng"].get_member_manager(col_data["collection"])
     memeber_mng.leave()
-    logger.info("left collection.".format(col_uid))
+    logger.info("collection left.")
 
 
 def get_collection_item(account: Account, col_uid: int, item_uid: int, col_data: Dict[str, Any] = {}) -> Item:
