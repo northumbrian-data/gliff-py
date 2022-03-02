@@ -1,13 +1,13 @@
 import base64
 import json
 import time
-from unicodedata import numeric
 from decouple import config, UndefinedValueError
 from loguru import logger
-from etebase import Client, Account
+from etebase import Client, Account, Collection, Item
 from PIL import Image
 from io import BytesIO
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, List, Dict
+import numpy as np
 
 
 def get_value(env_variable: str) -> Any:
@@ -58,21 +58,24 @@ def _get_thumbnail_from_pil_image(img_pil: Image.Image) -> str:
     return pil_to_base64_image(img_pil, True)
 
 
-def _decode_content(content: bytes) -> Any:
-    """Extract and decode collection's or item's content, from binary to dict."""
-    return json.loads(content.decode())
+def decode_content(content: bytes) -> Any:
+    """Extract and decode collection's or item's content, from binary to Dict."""
+    try:
+        return json.loads(content.decode())
+    except json.JSONDecodeError as e:
+        logger.warning("Error while accessing the collection's content: {}.".format(e))
 
 
-def _encode_content(decoded_content: Any) -> bytes:
-    """Encode collection's or item's content, from dict to binary."""
+def encode_content(decoded_content: Any) -> bytes:
+    """Encode collection's or item's content, from Dict to binary."""
     return json.dumps(decoded_content, separators=(",", ":")).encode()
 
 
-def _get_current_time() -> int:
+def get_current_time() -> int:
     return int(round(time.time() * 1000))
 
 
-def is_empty_annotation(annotation: dict[str, Any]) -> bool:
+def is_empty_annotation(annotation: Dict[str, Any]) -> bool:
     return (
         (len(annotation["spline"]["coordinates"]) == 0)
         & (len(annotation["brushStrokes"]) == 0)
@@ -81,18 +84,18 @@ def is_empty_annotation(annotation: dict[str, Any]) -> bool:
 
 
 def create_brush_stroke(
-    coordinates: list[Union[int, float]],
-    spaceTimeInfo: Optional[dict[str, Any]] = {
+    coordinates: List[Union[int, float]],
+    spaceTimeInfo: Optional[Dict[str, Any]] = {
         "z": 0,
         "t": 0,
     },
-    brush: Optional[dict[str, Any]] = {
+    brush: Optional[Dict[str, Any]] = {
         "radius": 0.5,
         "type": "paint",
         "color": "rgba(170, 0, 0, 0.5)",
         "is3D": False,
     },
-) -> Optional[dict[str, Any]]:
+) -> Optional[Dict[str, Any]]:
     return {
         "coordinates": coordinates,
         "spaceTimeInfo": spaceTimeInfo,
@@ -102,22 +105,22 @@ def create_brush_stroke(
 
 def create_annotation(
     toolbox: str,
-    labels: list[str] = [],
-    spline: Optional[dict[str, Any]] = {
+    labels: List[str] = [],
+    spline: Optional[Dict[str, Any]] = {
         "coordinates": [],
         "spaceTimeInfo": {"z": 0, "t": 0},
         "isClosed": False,
     },
-    bounding_box: Optional[dict[str, Any]] = {
+    bounding_box: Optional[Dict[str, Any]] = {
         "coordinates": {
             "topLeft": {"x": None, "y": None},
             "bottomRight": {"x": None, "y": None},
         },
         "spaceTimeInfo": {"z": 0, "t": 0},
     },
-    brush_strokes: Optional[list[Optional[dict[str, Any]]]] = [],
-    parameters: Optional[dict[str, Any]] = {},
-) -> dict[str, Any]:
+    brush_strokes: Optional[List[Optional[Dict[str, Any]]]] = [],
+    parameters: Optional[Dict[str, Any]] = {},
+) -> Dict[str, Any]:
     return {
         "toolbox": toolbox,
         "labels": labels,
@@ -128,7 +131,7 @@ def create_annotation(
     }
 
 
-def _get_image_data(image: Union[str, Image.Image]) -> Union[None, dict[str, Any]]:
+def _get_image_data(image: Union[str, Image.Image]) -> Union[None, Dict[str, Any]]:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
@@ -137,7 +140,7 @@ def _get_image_data(image: Union[str, Image.Image]) -> Union[None, dict[str, Any
         Image uploaded to the new item.
     Returns
     -------
-    image_data: dict or None
+    image_data: Dict or None
         A dictionary that includes image width, height, thumbnail and the ecoded image.
     """
 
@@ -156,69 +159,56 @@ def _get_image_data(image: Union[str, Image.Image]) -> Union[None, dict[str, Any
         "width": width,
         "height": height,
         "thumbnail": _get_thumbnail_from_pil_image(image_pil),
-        "encoded_image": _encode_content([[image]]),
+        "encoded_image": encode_content([[image]]),
     }
 
 
-def _get_collection_and_manager(etebase: Any, col_uid: int, etedata: dict[str, Any] = {}) -> dict[str, Any]:
+def _get_collection_and_manager(account: Account, col_uid: int, col_data: Dict[str, Any]) -> None:
     """Get collection manager and collection.
 
     Parameters
     ----------
-    etebase
+    account: Account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
-    etedata: dict
-        Etebase data (i.e., collection manager, collection, item manager)
-    Returns
-    -------
-    etedata: dict
-        Updated etebase data dictionary
+    col_data: Dict
+        Etebase collection data (i.e., collection manager, collection, item manager).
     """
 
-    logger.info("fetching collection manager and collection...")
-    col_mng = etebase.get_collection_manager()
-    collection = col_mng.fetch(col_uid)
-    logger.info("fetched collection manager and collection.")
-    etedata.update({"col_mng": col_mng, "collection": collection})
+    logger.info("fetching collection manager...")
+    col_data["col_mng"] = account.get_collection_manager()
+    logger.info("collection manager fetched.")
 
-    return etedata
+    logger.info("fetching collection...")
+    col_data["collection"] = col_data["col_mng"].fetch(col_uid)
+    logger.info("collection fetched.")
 
 
-def _get_all_etedata(etebase: Any, col_uid: int, etedata: dict[str, Any] = {}) -> Any:
+def _get_all_col_data(account: Account, col_uid: int, col_data: Dict[str, Any] = {}) -> None:
     """Get etebase item manager for a given collection with uid == col_uid.
 
     Parameters
     ----------
-    etebase
+    account: Account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
-    etedata: dict
-        Etebase data (i.e., collection manager, collection, item manager)
-    Returns
-    -------
-    etedata: dict
-        Updated etebase data dictionary
+    col_data: Dict
+        Etebase collection data (i.e., collection manager, collection, item manager).
     """
-    if "col_mng" not in etedata:
-        etedata.update(_get_collection_and_manager(etebase, col_uid))
-    elif "collection" not in etedata:
-        logger.info("fetching collection...")
-        etedata.update({"collection": etedata["col_mng"].fetch(col_uid)})
-        logger.info("collection fetched.")
+    if "col_mng" or "collection" not in col_data:
+        _get_collection_and_manager(account, col_uid, col_data)
 
-    if "item_mng" not in etedata:
+    if "item_mng" not in col_data:
         logger.info("fetching item manager...")
-        etedata.update({"item_mng": etedata["col_mng"].get_item_manager(etedata["collection"])})
-        logger.info("fetched item manager.")
-
-    return etedata
+        col_data["item_mng"] = col_data["col_mng"].get_item_manager(col_data["collection"])
+        logger.info("item manager fetched.")
 
 
 def login(username: str, password: str, server_url: str) -> Any:
     """Log in to STORE.
+
     Parameters
     ----------
     username: str
@@ -229,224 +219,251 @@ def login(username: str, password: str, server_url: str) -> Any:
         Server URL.
     Returns
     -------
-    etebase
+    account: Account
         Instance of the main etebase class.
     """
 
     logger.info("logging in to STORE...")
     client = Client("client-name", server_url)
-    etebase = Account.login(
+    account = Account.login(
         client,
         username,
         password,
     )
-    logger.success("logged in to STORE")
+    logger.success("logged in.")
 
-    _accept_pending_invitations(etebase)
+    _accept_pending_invitations(account)
 
-    return etebase
+    return account
 
 
-def logout(etebase: Any) -> None:
-    """Log out of STORE."""
+def logout(account: Account) -> None:
+    """Log out of STORE.
+
+    Parameters
+    ----------
+    account: Account
+        Instance of the main etebase class.
+    """
 
     logger.info("logging out...")
-    etebase.logout()
-    logger.success("logged out")
+    account.logout()
+    logger.success("logged out.")
 
 
-def _accept_pending_invitations(etebase: Any) -> None:
+def _accept_pending_invitations(account: Account) -> None:
     """Accept all pending invitations to join a STORE collection.
 
     Parameters
     ----------
-    etebase
+    account: Account
         Instance of the main etebase class.
     """
 
-    invit_mng = etebase.get_invitation_manager()
+    invit_mng = account.get_invitation_manager()
 
     invitations = invit_mng.list_incoming()
     logger.info("pending invitations: {}".format(invitations))
 
     for invitation in list(invitations.data):
-        # TODO: verify that the public key is indeed the pubkey you expect
 
         invit_mng.accept(invitation)
-        logger.success("accepted invitation {}.".format(invitation))
+        logger.success("invitations accepted.")
 
 
-def _leave_collection(etebase: Any, col_uid: int, etedata: dict[str, Any] = {}) -> None:
+def _leave_collection(account: Account, col_uid: int, col_data: Dict[str, Any] = {}) -> None:
     """Leave a collection.
 
     Parameters
     ----------
-    etebase
+    account: Account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
-    etedata: dict
+    col_data: Dict
         Etebase data (i.e., collection manager, collection, item manager)
     """
+    _get_collection_and_manager(account, col_uid, col_data)
 
     logger.info("leaving collection {}...".format(col_uid))
-    etedata = _get_collection_and_manager(etebase, col_uid, etedata)
-    memeber_mng = etedata["col_mng"].get_member_manager(etedata["collection"])
+    memeber_mng = col_data["col_mng"].get_member_manager(col_data["collection"])
     memeber_mng.leave()
-    logger.info("left collection {}.".format(col_uid))
+    logger.info("left collection.".format(col_uid))
 
 
-def get_collection_item(etebase: Any, col_uid: int, item_uid: int, etedata: dict[str, Any] = {}) -> Any:
+def get_collection_item(account: Account, col_uid: int, item_uid: int, col_data: Dict[str, Any] = {}) -> Item:
     """Retrieve a collection's item.
 
     Parameters
     ----------
-    etebase:
+    account: Account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
     item_uid: int
         Item uid.
-    etedata:
+    col_data:
         Etebase data (i.e., collection manager, collection, item manager)
     Returns
     -------
-    item
+    item: Item
+        Collection's item
     """
 
-    etedata = _get_all_etedata(etebase, col_uid, etedata)
+    _get_all_col_data(account, col_uid, col_data)
 
     try:
-        logger.info("fetching item {}...".format(item_uid))
-        item = etedata["item_mng"].fetch(item_uid)
-        logger.info("fetched item {}.".format(item_uid))
+        logger.info("fetching item, uid: {}...".format(item_uid))
+        item = col_data["item_mng"].fetch(item_uid)
+        logger.info("item fetched.")
+        return item
     except Exception as e:
-        logger.error("Error while fetching image: {}.".format(e))
-        return
-
-    return item
+        logger.error("error while fetching image: {}.".format(e))
 
 
-def _create_gallery_tile(etedata: Any, item_uid: int, thumbnail: str, metadata: dict[str, Any] = {}) -> None:
+def _create_gallery_tile(col_data: Any, item_uid: int, thumbnail: str, tile_data: Dict[str, Any] = {}) -> None:
     """Create, ecrypt and upload a new tile to the STORE collection.
 
     Parameters
     ----------
-    etedata:
-        Etebase data (i.e., collection manager, collection, item manager)
+    col_data:
+        Etebase collection data (i.e., collection manager, collection, item manager).
     item_uid: int
         Item uid.
     thumbnail: string
         Base64-encoded image's thumbnail.
-    metadata: dict
-        Metadata key-value pairs (optional).
+    tile_data: Dict
+        Custom tile data key-value pairs (optional).
     """
 
     logger.info("updating collection's content..")
 
-    # get decoded collection content
-    gallery = _decode_content(etedata["collection"].content)
+    try:
+        gallery = _get_gallery(col_data["collection"])
 
-    # defined a gallery tile for the new item
-    gallery_tile = {
-        "id": item_uid,
-        "thumbnail": thumbnail,
-        "imageLabels": [],
-        "assignees": [],
-        "metadata": metadata,
-        "imageUID": item_uid,
-        "annotationUID": {},
-        "auditUID": {},
-        "annotationComplete": {},
-    }
+        if "metadata" in tile_data:
+            metadata = tile_data.pop("metadata")
+        else:
+            metadata = {}
 
-    # add new tile
-    gallery.append(gallery_tile)
+        new_gallery_tile = {
+            "id": item_uid,
+            "thumbnail": thumbnail,
+            "imageLabels": [],
+            "assignees": [],
+            "metadata": metadata,
+            "imageUID": item_uid,
+            "annotationUID": {},
+            "auditUID": {},
+            "annotationComplete": {},
+            **tile_data,
+        }
 
-    # replace old collection's content with new one
-    etedata["collection"].content = _encode_content(gallery)
+        gallery.append(new_gallery_tile)
 
-    # save changes
-    etedata["col_mng"].transaction(etedata["collection"])
-    logger.success("updated collection's content")
+        _set_gallery(col_data["col_mng"], col_data["collection"], gallery)
+    except Exception as e:
+        logger.error("Error while creating a gallery's tile: {}".format(e))
 
 
-def _update_gallery_tile(etedata: Any, item_uid: int, tile_data: dict[str, Any] = {}) -> None:
+def _get_gallery(collection: Collection) -> Dict[str, Any]:
+    return decode_content(collection.content)
+
+
+def _find_gallery_tile(gallery: List[Dict[str, Any]], id: str) -> Union[int, None]:
+    """Get the index for the gallery tile corresponding to the image item with
+    uid equal to the galler's id (or equal to the imageUID field)."""
+    for i, tile in enumerate(gallery):
+        if tile["id"] == id:
+            return i
+    return None
+
+
+def _set_gallery(col_mng, collection: Collection, gallery: List[Dict[str, Any]]) -> None:
+    collection.content = encode_content(gallery)
+    col_mng.transaction(collection)
+
+
+def _update_gallery_tile(col_data: Any, item_uid: int, tile_data: Dict[str, Any] = {}) -> None:
     """Update a tile in the STORE collection.
     Parameters
     ----------
-    etedata:
+    col_data:
         Etebase data (i.e., collection manager, collection, item manager)
     item_uid: int
         Item uid (the item is of type gliff.image).
-    tile_data: dict (optional)
+    tile_data: Dict (optional)
     """
 
     def update_tile(
-        tile: dict[str, Any],
-        metadata: Optional[dict[str, Any]] = None,
-        annotationUID: Optional[dict[str, str]] = None,
-        annotationComplete: Optional[dict[str, str]] = None,
+        tile: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
+        annotationUID: Optional[Dict[str, str]] = None,
+        annotationComplete: Optional[Dict[str, str]] = None,
+        imageLabels: Optional[List[str]] = None,
         **kwargs: Any
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         if metadata is not None:
             tile["metadata"].update(metadata)
         if annotationUID is not None:
             tile["annotationUID"].update(annotationUID)
         if annotationComplete is not None:
             tile["annotationComplete"].update(annotationComplete)
+        if imageLabels is not None:
+            tile["imageLabels"] = imageLabels
         return tile
 
-    logger.info("updating collection's content..")
+    logger.info("updating gallery's tile..")
 
-    # get decoded collection content
-    gallery = _decode_content(etedata["collection"].content)
+    try:
+        gallery = _get_gallery(col_data["collection"])
 
-    # change tile corresponding to image item with uid equal to item_uid
-    for tile in gallery:
-        if tile["id"] == item_uid:
-            tile = update_tile({**tile}, **tile_data)
+        tile_index = _find_gallery_tile(gallery, item_uid)
 
-    # replace old collection's content with new one
-    etedata["collection"].content = _encode_content(gallery)
+        gallery[tile_index] = update_tile({**gallery[tile_index]}, **tile_data)
 
-    # save changes
-    etedata["col_mng"].transaction(etedata["collection"])
-    logger.success("updated collection's content")
+        _set_gallery(col_data["col_mng"], col_data["collection"], gallery)
+    except Exception as e:
+        logger.error("Error while updating a gallery's tile: {}".format(e))
+
+    logger.info("updated gallery's tile")
 
 
 def create_image_item(
-    etebase: Any,
+    account: Account,
     col_uid: int,
     name: str,
     image: Union[str, Image.Image],
-    metadata: dict[str, Any] = {},
-    etedata: dict[str, Any] = {},
+    image_labels: List[str] = [],
+    metadata: Dict[str, Any] = {},
+    col_data: Dict[str, Any] = {},
 ) -> Union[int, None]:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
     ----------
-    etebase
+    account: Account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
     name: string
         Name of the new item.
     image: Union[str, Image.Image]
-        Image uploaded to the new item.
-    metadata: dict
+        2D image to upload to the new item.
+    image_labels: List[str]
+        Image labels (optional).
+    metadata: Dict
         Metadata to be stored inside the new item (optional).
-    etedata:
-        Etebase data (i.e., collection manager, collection, item manager)
+    col_data:
+        Etebase collection data (i.e., collection manager, collection, item manager).
     -------
-    image_uid: Union[int, None]
+    item_uid: Union[int, None]
         New image item's uid.
     """
 
     logger.info("creating new image item...")
 
-    etedata = _get_all_etedata(etebase, col_uid, etedata)
+    _get_all_col_data(account, col_uid, col_data)
 
     image_data = _get_image_data(image)
     if image_data is None:
@@ -455,105 +472,187 @@ def create_image_item(
     # place the image in the expected array structure and stringify the result
     item_content = image_data["encoded_image"]
 
-    ctime = _get_current_time()
-
+    ctime = get_current_time()
     item_metadata = {
         "type": "gliff.image",  # STORE image item type
-        "name": name,
+        "imageName": name,  # check if this has changed
         "createdTime": ctime,
         "modifiedTime": ctime,
-        "width": image_data["width"],
-        "height": image_data["height"],
     }
 
-    col_metadata = {
-        "imageName": name,
-        "width": image_data["width"],
-        "height": image_data["height"],
-        **metadata,
+    tile_data = {
+        "metadata": {
+            "imageName": name,
+            "width": image_data["width"],
+            "height": image_data["height"],
+            **metadata,
+        },
+        "imageLabels": image_labels,
     }
 
     # create a new item and upload it to the collection
-    item = etedata["item_mng"].create(item_metadata, item_content)
-    etedata["item_mng"].transaction([item])
-    logger.success("created new image item, uid: {}".format(item.uid))
+    item = col_data["item_mng"].create(item_metadata, item_content)
+    col_data["item_mng"].transaction([item])
+    logger.success("image item created.")
 
     # add the new tile to the collection's content
     _create_gallery_tile(
-        etedata,
+        col_data,
         item.uid,
         image_data["thumbnail"],
-        col_metadata,
+        tile_data,
     )
 
     return item.uid
 
 
 def update_image_metadata(
-    etebase: Any, col_uid: int, item_uid: int, metadata: dict[str, Any], etedata: dict[str, Any] = {}
+    account: Account,
+    col_uid: int,
+    item_uid: int,
+    image_labels: List[str] = [],
+    metadata: Dict[str, Any] = {},
+    col_data: Dict[str, Any] = {},
 ) -> None:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
     ----------
-    etebase
+    account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
     item_uid: int
-        Item uid.
-    metadata: dict
-        New metadata to overwrite existing metadata.
+        Image item's uid.
+    image_labels: List[str]
+        Image labels (optional).
+    metadata: Dict
+        New metadata to overwrite existing metadata (optional).
+    col_data: Dict
+        Etebase collection data (i.e., collection manager, collection, item manager).
     """
 
     logger.info("updating image item's metadata...")
 
-    # get etebase data if missing
-    etedata = _get_all_etedata(etebase, col_uid, etedata)
+    _get_all_col_data(account, col_uid, col_data)
 
     # get existing item
-    item = get_collection_item(etebase, col_uid, item_uid, etedata)
+    item = get_collection_item(account, col_uid, item_uid, col_data)
 
     # update image item's time modified (stored in the item's metadata)
     item.meta = {
         **item.meta,
-        "modifiedTime": _get_current_time(),
+        "modifiedTime": get_current_time(),
     }
 
-    etedata["item_mng"].transaction([item])
+    col_data["item_mng"].transaction([item])
+
+    tile_data = {"metadata": metadata, "imageLabels": image_labels}
 
     # update image item metadata (stored in the collection's content)
-    _update_gallery_tile(etedata, item_uid, metadata)
+    _update_gallery_tile(col_data, item_uid, tile_data)
 
-    logger.success("updated image item's metadata, uid: {}".format(item.uid))
+    logger.success("metadata updated.")
 
 
-def get_annotation_uid(
-    etebase: Any, col_uid: int, image_item_uid: int, username: str, etedata: dict[str, Any] = {}
-) -> Union[int, None]:
-    """Check whether there exists an annotation for an image item with uid equal to
-    image_item_uid and returns the annotation uid, otherwise returns None.
+def get_item_image_data(account: Account, col_uid: int, item_uid: int, col_data: Dict[str, Any] = {}) -> Image.Image:
+    """Get the image data from an image item.
 
     Parameters
     ----------
-    etebase
+    account: Account
+        Instance of the main etebase class.
+    col_uid: int
+        Collection uid.
+    item_uid: int
+        Annotation item's uid.
+    col_data: Dict
+        Etebase collection data (i.e., collection manager, collection, item manager).
+    Returns
+    -------
+    image_data: Image.Image
+        Image item's decoded content.
+    """
+
+    _get_all_col_data(account, col_uid, col_data)
+
+    logger.info("fetching item's image data, uid: {}...".format(item_uid))
+
+    try:
+        item = get_collection_item(account, col_uid, item_uid, col_data)
+        decoded_content = decode_content(item.content)
+
+        image_data = []
+        for i_slice in range(len(decoded_content)):
+            image_data.append([])
+            for i_channel in range(len(decoded_content[i_slice])):
+                image_data[i_slice].append(base64_to_pil_image(decoded_content[i_slice][i_channel]))
+
+        logger.success("image data fetched.")
+        return image_data
+    except Exception as e:
+        logger.error("Error while fetching an item's image data: {}".format(e))
+
+
+def get_image_metadata(account: Account, col_uid: int, item_uid: int, col_data: Dict[str, Any] = {}) -> Dict[str, Any]:
+    """Retrieve metadata for an image item.
+
+    Parameters
+    ----------
+    account: Account
+        Instance of the main etebase class.
+    col_uid: int
+        Collection uid.
+    item_uid: int
+        Image item's uid.
+    col_data:
+        Etebase collection data (i.e., collection manager, collection, item manager).
+    Returns
+    -------
+    metadata
+        Image item's metadata.
+    """
+
+    _get_all_col_data(account, col_uid, col_data)
+
+    included_keys = ["metadata", "imageLabels"]
+
+    try:
+        gallery = _get_gallery(col_data["collection"])
+
+        index = _find_gallery_tile(gallery, item_uid)
+
+        return {key: gallery[index][key] for key in set(included_keys)}
+    except Exception as e:
+        logger.error("error while retrieving image item's metadata: {}".format(e))
+
+
+def get_annotation_uid(
+    account: Account, col_uid: int, image_item_uid: int, username: str, col_data: Dict[str, Any] = {}
+) -> Union[int, None]:
+    """Check whether there exists an annotation made by a user with corresponding username and for an image
+    item with uid equal to image_item_uid and return the annotation item's uid.
+
+    Parameters
+    ----------
+    account: Account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
     image_item_uid: int
         Uid for corresponding image item.
-    username:
+    username: str
         Identifier for the user who makes the annotation.
-    etedata:
-        Etebase data (i.e., collection manager, collection, item manager)
+    col_data:
+        Etebase collection data (i.e., collection manager, collection, item manager).
     Returns
     -------
-    item_uid: int or None
+    item_uid: Union[int, None]
         Annotation item's uid.
     """
-    _get_collection_and_manager(etebase, col_uid)
+    _get_collection_and_manager(account, col_uid, col_data)
 
-    gallery = _decode_content(etedata["collection"].content)
+    gallery = _get_gallery(col_data["collection"])
 
     item_uid = None
     for tile in gallery:
@@ -565,34 +664,32 @@ def get_annotation_uid(
 
 
 def create_annotation_item(
-    etebase: Any,
+    account: Account,
     col_uid: int,
     image_item_uid: int,
     username: str,
-    annotations: list[dict[str, Any]],
-    metadata: dict[str, Any] = {},
-    etedata: dict[str, Any] = {},
+    annotations: List[Dict[str, Any]],
+    metadata: Dict[str, Any] = {},
+    col_data: Dict[str, Any] = {},
 ) -> int:
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
     ----------
-    etebase
+    account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
     image_item_uid: int
         Uid for corresponding image item.
-    name: string
-        Name of the new item.
-    user_id:
+    username: str
         Identifier for the user who makes the annotation.
     annotation: PIL.Image.Image or str
         Annotation to upload to the new item.
-    metadata: dict
+    metadata: Dict
         Metadata to be stored inside the new item (optional).
-    etedata:
-        Etebase data (i.e., collection manager, collection, item manager)
+    col_data:
+        Etebase collection data (i.e., collection manager, collection, item manager).
     Returns
     -------
     item_uid: int
@@ -601,13 +698,13 @@ def create_annotation_item(
 
     logger.info("creating new annotation item...")
 
-    etedata = _get_all_etedata(etebase, col_uid, etedata)
+    _get_all_col_data(account, col_uid, col_data)
 
     # defined item's content
-    item_content = _encode_content(annotations)
+    item_content = encode_content(annotations)
 
     # defined item's metadata
-    ctime = _get_current_time()
+    ctime = get_current_time()
     item_metadata = {
         "type": "gliff.annotation",
         "createdTime": ctime,
@@ -616,10 +713,10 @@ def create_annotation_item(
     }
 
     # create a new item and store it in the collection
-    item = etedata["item_mng"].create(item_metadata, item_content)
-    etedata["item_mng"].transaction([item])
+    item = col_data["item_mng"].create(item_metadata, item_content)
+    col_data["item_mng"].transaction([item])
 
-    logger.success("created annotation item, uid: {}".format(item.uid))
+    logger.success("annotation item created.")
 
     # TODO: add audit
     tile_data = {
@@ -627,77 +724,102 @@ def create_annotation_item(
         "annotationUID": {username: item.uid},
         "annotationComplete": {username: False},
     }
-    _update_gallery_tile(etedata, image_item_uid, tile_data)
+    _update_gallery_tile(col_data, image_item_uid, tile_data)
 
     return item.uid
 
 
 def update_annotation_item(
-    etebase: Any,
+    account: Account,
     col_uid: int,
     image_item_uid: int,
     username: str,
-    annotations: list[dict[str, Any]],
-    metadata: dict[str, Any] = {},
-    etedata: dict[str, Any] = {},
+    annotations: List[Dict[str, Any]],
+    metadata: Dict[str, Any] = {},
+    col_data: Dict[str, Any] = {},
     annotation_item_uid: Optional[int] = None,
 ):
     """Create, encrypt and upload a new item to the STORE collection.
 
     Parameters
     ----------
-    etebase
+    account
         Instance of the main etebase class.
     col_uid: int
         Collection uid.
     image_item_uid: int
         Image item's uid.
-    name: string
-        Name of the new item.
-    username:
+    username: str
         Identifier for the user who makes the annotation.
-    annotations: dict
+    annotations: Dict
         Annotation to upload to the new item.
-    metadata: dict
+    metadata: Dict
         Metadata to be stored inside the new item (optional).
-    etedata:
-        Etebase data (i.e., collection manager, collection, item manager)
-    annotation_item_uid: int or None
-        Uid for the updated annotation (optional)
+    col_data:
+        Etebase collection data (i.e., collection manager, collection, item manager).
+    annotation_item_uid: Optional[int]
+        Uid for annotation to update (optional).
     Returns
     -------
     item_uid: int
         Annotation item's uid.
     """
 
-    _get_all_etedata(etebase, col_uid, etedata)
+    _get_all_col_data(account, col_uid, col_data)
 
     if annotation_item_uid is None:
-        annotation_item_uid = get_annotation_uid(etebase, col_uid, item.uid, username, etedata)
+        annotation_item_uid = get_annotation_uid(account, col_uid, image_item_uid, username, col_data)
 
-    logger.info("updating annotation item {}...".format(annotation_item_uid))
+    logger.info("updating annotation item, uid: {}...".format(annotation_item_uid))
 
-    item = get_collection_item(etebase, col_uid, annotation_item_uid, etedata=etedata)
-
-    # update item's metadata
-    item.meta = {**item.meta, "modifiedTime": _get_current_time()}
+    item = get_collection_item(account, col_uid, annotation_item_uid, col_data=col_data)
 
     # remove last annotation if empty
-    prev_annotations = _decode_content(item.content)
+    prev_annotations = decode_content(item.content)
     if len(prev_annotations) > 0 & is_empty_annotation(prev_annotations[-1]):
         prev_annotations.pop()
 
+    # update item's metadata
+    item.meta = {**item.meta, "modifiedTime": get_current_time()}
+
     # update item's content
-    item.content = _encode_content([*prev_annotations, *annotations])
+    item.content = encode_content([*prev_annotations, *annotations])
 
     # save changes
-    etedata["item_mng"].transaction([item])
+    col_data["item_mng"].transaction([item])
 
-    logger.success("updated annotation item, uid: {}".format(item.uid))
+    logger.success("annotation item updated.")
 
     tile_data = {
         "metadata": metadata,
     }
-    _update_gallery_tile(etedata, image_item_uid, tile_data)
+    _update_gallery_tile(col_data, image_item_uid, tile_data)
 
     return item.uid
+
+
+def get_item_annotations(account: Account, col_uid: int, item_uid: int, col_data: Dict[str, Any] = {}) -> Any:
+    """Get the annotations from an annotation item.
+
+    Parameters
+    ----------
+    account: Account
+        Instance of the main etebase class.
+    col_uid: int
+        Collection uid.
+    item_uid: int
+        Annotation item's uid.
+    col_data:
+        Etebase collection data (i.e., collection manager, collection, item manager).
+    Returns
+    -------
+    metadata
+        Image item's metadata.
+    """
+    _get_all_col_data(account, col_uid, col_data)
+
+    try:
+        item = get_collection_item(account, col_uid, item_uid, col_data)
+        return decode_content(item.content)
+    except Exception as e:
+        logger.error("Error while fetching an item's annotations: {}".format(e))
