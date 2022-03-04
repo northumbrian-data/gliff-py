@@ -24,25 +24,4 @@ jobs:
       - name: Lint
         run: poetry run flake8 *.py
       - name: Format
-        run: black --verbose --diff *.py
-  Test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Setup Python version
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.9"
-      - name: Setup Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.1.10
-          installer-parallel: true
-      - name: Setup dependencies
-        run: poetry install
-      - name: Test
-        run: poetry run pytest
+        run: poetry run black --verbose --diff *.py
