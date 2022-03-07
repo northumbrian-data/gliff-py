@@ -118,7 +118,7 @@ class Gliff:
                 env_value = config(env_variable)
                 return env_value
         except KeyError:
-            raise UndefinedValueError("{} not found.".format(env_variable))
+            raise UndefinedValueError(f"{env_variable} not found.")
 
     def base64_to_pil_image(self, img_base64: Union[str, bytes]) -> Image.Image:
         """Convert a base64-encoded image into a PIL Image object"""
@@ -135,7 +135,7 @@ class Gliff:
         img_bytes = img_file.getvalue()
         img_base64 = base64.b64encode(img_bytes).decode()
         if is_thumbnail:
-            img_base64 = "data:image/png;base64,{}".format(img_base64)
+            img_base64 = f"data:image/png;base64,{img_base64}"
         return img_base64
 
     def _get_thumbnail_from_pil_image(self, img_pil: Image.Image) -> str:
@@ -150,7 +150,7 @@ class Gliff:
         try:
             return json.loads(content.decode())
         except json.JSONDecodeError as e:
-            logger.warning("Error while accessing the project's content: {}.".format(e))
+            logger.warning(f"Error while accessing the project's content: {e}.")
 
     def encode_content(self, decoded_content: Any) -> bytes:
         """Encode project's or item's content, from Dict to binary."""
@@ -241,7 +241,7 @@ class Gliff:
             "parameters": parameters,
         }
 
-    def _get_image_data(self, image: Union[str, Image.Image]) -> Union[None, Dict[str, Any]]:
+    def _process_image_data(self, image: Union[str, Image.Image]) -> Union[None, Dict[str, Any]]:
         """Create, encrypt and upload a new item to the STORE project.
 
         Parameters
@@ -323,7 +323,7 @@ class Gliff:
         invit_mng = account.get_invitation_manager()
 
         invitations = invit_mng.list_incoming()
-        logger.info("pending invitations: {}".format(invitations))
+        logger.info(f"pending invitations: {invitations}")
 
         for invitation in list(invitations.data):
 
@@ -342,7 +342,7 @@ class Gliff:
         """
         self.update_project_data(account, project_uid)
 
-        logger.info("leaving project, uid: {}...".format(project_uid))
+        logger.info(f"leaving project, uid: {project_uid}...")
         memeber_mng = self.project.project_mng.get_member_manager(self.project.project)
         memeber_mng.leave()
         logger.info("left project.")
@@ -369,7 +369,7 @@ class Gliff:
         Parameters
         ----------
         account: Account
-            Instance of the main etebase class.
+            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         item_uid: str
@@ -383,24 +383,107 @@ class Gliff:
         self.update_project_data(account, project_uid)
 
         try:
-            logger.info("fetching item, uid: {}...".format(item_uid))
+            logger.info(f"fetching item, uid: {item_uid}...")
             item = self.project.item_mng.fetch(item_uid)
             logger.info("item fetched.")
             return item
         except Exception as e:
-            logger.error("error while fetching image: {}.".format(e))
+            logger.error(f"error while fetching image: {e}.")
 
-    def _create_gallery_tile(self, item_uid: int, thumbnail: str, tile_data: Dict[str, Any] = {}) -> None:
+    def _create_tile_update(
+        self,
+        image_labels: Optional[List[str]] = None,
+        metadata: Dict[str, Any] = {},
+        annotation_uid: Dict[str, str] = {},
+        audit_uid: Dict[str, str] = {},
+        annotation_complete: Dict[str, bool] = {},
+    ) -> Dict[str, Any]:
+        """Create gallery tile with data to update.
+
+        Parameters:
+        -----------
+        image_labels: List[str]
+            Image-wise labels.
+        metadata: Dict
+            Metadata.
+        annotation_uid: Dict[str, str]
+            Annotation items linked to the image item.
+        audit_uid: Dict[str, str]
+            Audit items linked to the image item.
+        annotation_complete: Dict[str, bool]
+            Whether annotations are complete or not.
+
+        Returns:
+        --------
+        tile: Dist
+            Gallery tile.
+        """
+
+        tile = {
+            "metadata": metadata,
+            "annotationUID": annotation_uid,
+            "auditUID": audit_uid,
+            "annotationComplete": annotation_complete,
+        }
+
+        if image_labels is not None:
+            tile["imageLabels"] = image_labels
+
+        return tile
+
+    def _create_new_tile(
+        self,
+        image_item_uid: str,
+        thumbnail: str,
+        image_labels: List[str] = [],
+        metadata: Dict[str, Any] = {},
+        annotation_uid: Dict[str, str] = {},
+        audit_uid: Dict[str, str] = {},
+        annotation_complete: Dict[str, bool] = {},
+    ) -> Dict[str, Any]:
+        """Create new gallery tile.
+
+        Parameters:
+        -----------
+        image_item_uid: str
+            Image item's uid (also tile's id).
+        thumbnail: resized, base64-encoded image
+            Thumbnail for the image uploaded.
+        image_labels: List[str]
+            Image-wise labels.
+        metadata: Dict
+            Metadata.
+        annotation_uid: Dict[str, str]
+            Annotation items linked to the image item.
+        audit_uid: Dict[str, str]
+            Audit items linked to the image item.
+        annotation_complete: Dict[str, bool]
+            Whether annotations are complete or not.
+
+        Returns:
+        --------
+        tile: Dist
+            Gallery tile.
+        """
+
+        return {
+            "id": image_item_uid,
+            "thumbnail": thumbnail,
+            "imageLabels": image_labels,
+            "metadata": metadata,
+            "imageUID": image_item_uid,
+            "annotationUID": annotation_uid,
+            "auditUID": audit_uid,
+            "annotationComplete": annotation_complete,
+        }
+
+    def _create_gallery_tile(self, tile: Dict[str, Any]) -> None:
         """Create, ecrypt and upload a new tile to the STORE project.
 
         Parameters
         ----------
-        item_uid: str
-            Item uid.
-        thumbnail: str
-            Base64-encoded image's thumbnail.
-        tile_data: Dict
-            Custom tile data key-value pairs (optional).
+        tile: Dict
+            New gallery tile.
         """
 
         logger.info("updating gallery's content..")
@@ -408,29 +491,11 @@ class Gliff:
         try:
             gallery = self._get_gallery()
 
-            if "metadata" in tile_data:
-                metadata = tile_data.pop("metadata")
-            else:
-                metadata = {}
-
-            new_gallery_tile = {
-                "id": item_uid,
-                "thumbnail": thumbnail,
-                "imageLabels": [],
-                "assignees": [],
-                "metadata": metadata,
-                "imageUID": item_uid,
-                "annotationUID": {},
-                "auditUID": {},
-                "annotationComplete": {},
-                **tile_data,
-            }
-
-            gallery.append(new_gallery_tile)
+            gallery.append(tile)
 
             self._set_gallery(gallery)
         except Exception as e:
-            logger.error("Error while creating a gallery's tile: {}".format(e))
+            logger.error(f"Error while creating a gallery's tile: {e}")
 
     def _get_gallery(self) -> List[Dict[str, Any]]:
         return self.decode_content(self.project.get_content())
@@ -444,8 +509,7 @@ class Gliff:
         return None
 
     def _set_gallery(self, gallery: List[Dict[str, Any]]) -> None:
-        project_content = self.encode_content(gallery)
-        self.project.set_content(project_content)
+        self.project.set_content(self.encode_content(gallery))
 
     def _update_gallery_tile(self, item_uid: str, tile_data: Dict[str, Any]) -> None:
         """Update a tile in the STORE project.
@@ -461,15 +525,20 @@ class Gliff:
             tile: Dict[str, Any],
             metadata: Optional[Dict[str, Any]] = None,
             annotationUID: Optional[Dict[str, str]] = None,
+            auditUID: Optional[Dict[str, str]] = None,
             annotationComplete: Optional[Dict[str, str]] = None,
             imageLabels: Optional[List[str]] = None,
-            **kwargs: Any
+            **kwargs: Any,
         ) -> Dict[str, Any]:
             if metadata is not None:
                 tile["metadata"].update(metadata)
             if annotationUID is not None:
                 tile["annotationUID"].update(annotationUID)
+            if auditUID is not None:
+                tile["auditUID"].update(auditUID)
             if annotationComplete is not None:
+                if "annotationComplete" not in tile:
+                    tile["annotationComplete"] = {}
                 tile["annotationComplete"].update(annotationComplete)
             if imageLabels is not None:
                 tile["imageLabels"] = imageLabels
@@ -486,11 +555,11 @@ class Gliff:
 
             self._set_gallery(gallery)
         except Exception as e:
-            logger.error("Error while updating a gallery's tile: {}".format(e))
+            logger.error(f"Error while updating a gallery's tile: {e}")
 
         logger.info("updated gallery's tile")
 
-    def create_image_item(
+    def upload_image(
         self,
         account: Account,
         project_uid: str,
@@ -498,7 +567,7 @@ class Gliff:
         image: Union[str, Image.Image],
         image_labels: List[str] = [],
         metadata: Dict[str, Any] = {},
-    ) -> Union[int, None]:
+    ) -> Union[str, None]:
         """Create, encrypt and upload a new item to the STORE project.
 
         Parameters
@@ -514,9 +583,9 @@ class Gliff:
         image_labels: List[str]
             Image labels (optional).
         metadata: Dict
-            Metadata to be stored inside the new item (optional).
+            Metadata (optional).
         -------
-        item_uid: Union[int, None]
+        item_uid: Union[str, None]
             New image item's uid.
         """
 
@@ -525,14 +594,14 @@ class Gliff:
         self.update_project_data(account, project_uid)
 
         # process the input image
-        image_data = self._get_image_data(image)
+        image_data = self._process_image_data(image)
         if image_data is None:
             return None
 
         # create a new gliff.image item and upload it to the project
         ctime = self.get_current_time()
         item_metadata = {
-            "type": "gliff.image",  # STORE image item type
+            "type": "gliff.image",
             "imageName": name,
             "createdTime": ctime,
             "modifiedTime": ctime,
@@ -544,26 +613,28 @@ class Gliff:
         logger.success("image item created.")
 
         # create a new tile and add this to the project's content (or gallery)
-        tile_data = {
-            "metadata": {
+        new_tile = self._create_new_tile(
+            item.uid,
+            image_data["thumbnail"],
+            image_labels,
+            metadata={
                 "imageName": name,
                 "width": image_data["width"],
                 "height": image_data["height"],
                 **metadata,
             },
-            "imageLabels": image_labels,
-        }
+        )
 
-        self._create_gallery_tile(item.uid, image_data["thumbnail"], tile_data)
+        self._create_gallery_tile(new_tile)
 
         return item.uid
 
-    def update_image_metadata(
+    def update_metadata_and_labels(
         self,
         account: Account,
         project_uid: str,
         item_uid: str,
-        image_labels: List[str] = [],
+        image_labels: Union[List[str], None] = None,
         metadata: Dict[str, Any] = {},
     ) -> None:
         """Create, encrypt and upload a new item to the STORE project.
@@ -579,7 +650,7 @@ class Gliff:
         image_labels: List[str]
             Image labels (optional).
         metadata: Dict
-            New metadata to overwrite existing metadata (optional).
+            Metadata (optional).
         """
 
         logger.info("updating image item's metadata...")
@@ -598,15 +669,12 @@ class Gliff:
 
         self.project.item_mng.transaction([item])
 
-        tile_data = {"metadata": metadata, "imageLabels": image_labels}
-
+        tile_data = self._create_tile_update(image_labels=image_labels, metadata=metadata)
         self._update_gallery_tile(item_uid, tile_data)
 
         logger.success("metadata updated.")
 
-    def get_item_image_data(
-        self, account: Account, project_uid: str, item_uid: str
-    ) -> Union[List[List[Image.Image]], None]:
+    def get_image_data(self, account: Account, project_uid: str, item_uid: str) -> Union[List[List[Image.Image]], None]:
         """Get the image data from an image item.
 
         Parameters
@@ -619,13 +687,13 @@ class Gliff:
             Annotation item's uid.
         Returns
         -------
-        image_data: Image.Image
+        image_data: Union[List[List[Image.Image]], None]
             Image item's decoded content.
         """
 
         self.update_project_data(account, project_uid)
 
-        logger.info("fetching item's image data, uid: {}...".format(item_uid))
+        logger.info(f"fetching item's image data, uid: {item_uid}...")
 
         try:
             item = self.get_project_item(account, project_uid, item_uid)
@@ -640,11 +708,11 @@ class Gliff:
             logger.success("image data fetched.")
             return image_data
         except Exception as e:
-            logger.error("Error while fetching an item's image data: {}".format(e))
+            logger.error(f"Error while fetching an item's image data: {e}")
         return None
 
-    def get_image_metadata(self, account: Account, project_uid: str, item_uid: str) -> Union[Dict[str, Any], None]:
-        """Retrieve metadata for an image item.
+    def get_metadata_and_labels(self, account: Account, project_uid: str, item_uid: str) -> Union[Dict[str, Any], None]:
+        """Retrieve an image's metadata and image-wise labels.
 
         Parameters
         ----------
@@ -657,26 +725,27 @@ class Gliff:
         Returns
         -------
         metadata: Dict
-            Image item's metadata.
+            Metadata.
+        image_labels: List[str]
+            Image labels.
         """
 
         self.update_project_data(account, project_uid)
-
-        included_keys = ["metadata", "imageLabels"]
 
         try:
             gallery = self._get_gallery()
 
             index = self._find_gallery_tile(gallery, item_uid)
 
-            return {key: gallery[index][key] for key in set(included_keys)}
+            return gallery[index]["metadata"], gallery[index]["imageLabels"]
+
         except Exception as e:
-            logger.error("error while retrieving image item's metadata: {}".format(e))
+            logger.error(f"error while retrieving image item's metadata: {e}")
         return None
 
-    def get_annotation_uid(
+    def _get_annotation_uid(
         self, account: Account, project_uid: str, image_item_uid: str, username: str
-    ) -> Union[int, None]:
+    ) -> Union[str, None]:
         """Check whether there exists an annotation made by a user with corresponding username and for an image
         item with uid equal to image_item_uid and return the annotation item's uid.
 
@@ -692,7 +761,7 @@ class Gliff:
             Identifier for the user who makes the annotation.
         Returns
         -------
-        item_uid: Union[int, None]
+        item_uid: Union[str, None]
             Annotation item's uid.
         """
         self.update_project_data(account, project_uid)
@@ -707,7 +776,7 @@ class Gliff:
                     break
         return item_uid
 
-    def create_annotation_item(
+    def _create_annotation_item(
         self,
         account: Account,
         project_uid: str,
@@ -728,10 +797,10 @@ class Gliff:
             Image item's uid.
         username: str
             Identifier for the user who makes the annotation.
-        annotation: PIL.Image.Image or str
-            Annotation to upload to the new item.
+        annotations: List[Dict]
+            Annotation data.
         metadata: Dict
-            Metadata to be stored inside the new item (optional).
+            Metadata (optional).
         Returns
         -------
         item_uid: str
@@ -759,24 +828,21 @@ class Gliff:
         logger.success("annotation item created.")
 
         # update the info stored in the corresponding gallery tile
-        tile_data = {
-            "metadata": metadata,
-            "annotationUID": {username: item.uid},
-            "annotationComplete": {username: False},
-        }
+        tile_data = self._create_tile_update(
+            metadata=metadata, annotation_uid={username: item.uid}, annotation_complete={username: False}
+        )
         self._update_gallery_tile(image_item_uid, tile_data)
 
         return item.uid
 
-    def update_annotation_item(
+    def _update_annotation_item(
         self,
         account: Account,
         project_uid: str,
         image_item_uid: str,
-        username: str,
+        annotation_item_uid: str,
         annotations: List[Dict[str, Any]],
         metadata: Dict[str, Any] = {},
-        annotation_item_uid: Optional[str] = None,
     ) -> str:
         """Create, encrypt and upload a new item to the STORE project.
 
@@ -788,14 +854,13 @@ class Gliff:
             Project's uid.
         image_item_uid: str
             Image item's uid.
-        username: str
-            Identifier for the user who makes the annotation.
-        annotations: Dict
-            Annotation to upload to the new item.
+        annotation_item_uid: str
+            Uid for annotation to update.
+        annotations: List[Dict]
+            Annotations data.
         metadata: Dict
-            Metadata to be stored inside the new item (optional).
-        annotation_item_uid: Optional[str]
-            Uid for annotation to update (optional).
+            Metadata (optional).
+
         Returns
         -------
         item_uid: str
@@ -804,10 +869,7 @@ class Gliff:
 
         self.update_project_data(account, project_uid)
 
-        if annotation_item_uid is None:
-            annotation_item_uid = self.get_annotation_uid(account, project_uid, image_item_uid, username)
-
-        logger.info("updating annotation item, uid: {}...".format(annotation_item_uid))
+        logger.info(f"updating annotation item, uid: {annotation_item_uid}...")
 
         item = self.get_project_item(account, project_uid, annotation_item_uid)
 
@@ -827,33 +889,83 @@ class Gliff:
 
         # if required, update the metadata
         if metadata:
-            tile_data = {
-                "metadata": metadata,
-            }
+            tile_data = self._create_tile_update(metadata=metadata)
             self._update_gallery_tile(image_item_uid, tile_data)
 
         return item.uid
 
-    def get_item_annotations(self, account: Account, project_uid: str, item_uid: str) -> Any:
-        """Get the annotations from an annotation item.
+    def upload_annotation(
+        self,
+        account: Account,
+        project_uid: str,
+        image_item_uid: str,
+        username: str,
+        annotations: List[Dict[str, Any]],
+        metadata: Dict[str, Any] = {},
+    ) -> str:
+        """Encrypt and upload an annotation to the STORE project.
+
+        Parameters
+        ----------
+        account
+            Instance of the main Etebase class.
+        project_uid: str
+            Project's uid.
+        image_item_uid: str
+            Image item's uid.
+        username: str
+            Identifier for the user who makes the annotation.
+        annotations: List[Dict]
+            Annotations data.
+        metadata: Dict
+            Metadata (optional).
+        Returns
+        -------
+        item_uid: str
+            Annotation item's uid.
+        """
+
+        annotation_item_uid = self._get_annotation_uid(account, project_uid, image_item_uid, username)
+
+        if annotation_item_uid is None:
+            # create new annotation item
+            annotation_item_uid = self._create_annotation_item(
+                account, project_uid, image_item_uid, username, annotations=annotations, metadata=metadata
+            )
+        else:
+            # update existing annotation item
+            self._update_annotation_item(
+                account, project_uid, image_item_uid, annotation_item_uid, annotations=annotations, metadata=metadata
+            )
+        return annotation_item_uid
+
+    def get_annotations(
+        self, account: Account, project_uid: str, image_item_uid: str, username: str
+    ) -> Union[List[Dict[str, Any]], None]:
+        """Get all the annotations from an annotation item.
 
         Parameters
         ----------
         account: Account
-            Instance of the main etebase class.
+            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
-        item_uid: str
-            Annotation item's uid.
+        image_item_uid: str
+            Image item's uid.
+        username: str
+            Identifier for the user who makes the annotation.
         Returns
         -------
-        metadata
-            Image item's metadata.
+        annotations: Union[List[Dict], None]
+            Annotations data.
         """
         self.update_project_data(account, project_uid)
 
         try:
-            item = self.get_project_item(account, project_uid, item_uid)
-            return self.decode_content(item.content)
+            annotation_item_uid = self._get_annotation_uid(account, project_uid, image_item_uid, username)
+            if annotation_item_uid is not None:
+                item = self.get_project_item(account, project_uid, annotation_item_uid)
+                return self.decode_content(item.content)
         except Exception as e:
-            logger.error("Error while fetching an item's annotations: {}".format(e))
+            logger.error(f"Error while fetching an item's annotations: {e}")
+        return None
