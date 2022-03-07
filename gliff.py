@@ -811,7 +811,6 @@ class Gliff:
 
         self.update_project_data(account, project_uid)
 
-        # create a new gliff.annotation item and store it in the project
         ctime = self.get_current_time()
         item_metadata = {
             "type": "gliff.annotation",
@@ -827,7 +826,6 @@ class Gliff:
 
         logger.success("annotation item created.")
 
-        # update the info stored in the corresponding gallery tile
         tile_data = self._create_tile_update(
             metadata=metadata, annotation_uid={username: item.uid}, annotation_complete={username: False}
         )
@@ -878,7 +876,6 @@ class Gliff:
         if len(prev_annotations) > 0 & self.is_empty_annotation(prev_annotations[-1]):
             prev_annotations.pop()
 
-        # update the annotation item and store and store the changes
         item.meta = {**item.meta, "modifiedTime": self.get_current_time()}
 
         item.content = self.encode_content([*prev_annotations, *annotations])
@@ -887,7 +884,6 @@ class Gliff:
 
         logger.success("annotation item updated.")
 
-        # if required, update the metadata
         if metadata:
             tile_data = self._create_tile_update(metadata=metadata)
             self._update_gallery_tile(image_item_uid, tile_data)
@@ -928,12 +924,10 @@ class Gliff:
         annotation_item_uid = self._get_annotation_uid(account, project_uid, image_item_uid, username)
 
         if annotation_item_uid is None:
-            # create new annotation item
             annotation_item_uid = self._create_annotation_item(
                 account, project_uid, image_item_uid, username, annotations=annotations, metadata=metadata
             )
         else:
-            # update existing annotation item
             self._update_annotation_item(
                 account, project_uid, image_item_uid, annotation_item_uid, annotations=annotations, metadata=metadata
             )
