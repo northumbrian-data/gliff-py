@@ -433,8 +433,7 @@ class Gliff:
             logger.error("Error while creating a gallery's tile: {}".format(e))
 
     def _get_gallery(self) -> List[Dict[str, Any]]:
-        project_content = self.project.get_content()
-        return self.decode_content(project_content)
+        return self.decode_content(self.project.get_content())
 
     def _find_gallery_tile(self, gallery: List[Dict[str, Any]], id: str) -> Union[int, None]:
         """Get the index for the gallery tile corresponding to the image item with
@@ -605,7 +604,9 @@ class Gliff:
 
         logger.success("metadata updated.")
 
-    def get_item_image_data(self, account: Account, project_uid: str, item_uid: str) -> Image.Image:
+    def get_item_image_data(
+        self, account: Account, project_uid: str, item_uid: str
+    ) -> Union[List[List[Image.Image]], None]:
         """Get the image data from an image item.
 
         Parameters
@@ -630,7 +631,7 @@ class Gliff:
             item = self.get_project_item(account, project_uid, item_uid)
             decoded_content = self.decode_content(item.content)
 
-            image_data = []
+            image_data: List[List[Image.Image]] = []
             for i_slice in range(len(decoded_content)):
                 image_data.append([])
                 for i_channel in range(len(decoded_content[i_slice])):
@@ -640,8 +641,9 @@ class Gliff:
             return image_data
         except Exception as e:
             logger.error("Error while fetching an item's image data: {}".format(e))
+        return None
 
-    def get_image_metadata(self, account: Account, project_uid: str, item_uid: str) -> Dict[str, Any]:
+    def get_image_metadata(self, account: Account, project_uid: str, item_uid: str) -> Union[Dict[str, Any], None]:
         """Retrieve metadata for an image item.
 
         Parameters
@@ -670,6 +672,7 @@ class Gliff:
             return {key: gallery[index][key] for key in set(included_keys)}
         except Exception as e:
             logger.error("error while retrieving image item's metadata: {}".format(e))
+        return None
 
     def get_annotation_uid(
         self, account: Account, project_uid: str, image_item_uid: str, username: str
@@ -831,7 +834,7 @@ class Gliff:
 
         return item.uid
 
-    def get_item_annotations(self, account: Account, project_uid: int, item_uid: int) -> Any:
+    def get_item_annotations(self, account: Account, project_uid: str, item_uid: str) -> Any:
         """Get the annotations from an annotation item.
 
         Parameters
