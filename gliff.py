@@ -20,9 +20,9 @@ class Project:
         """Reset all project values."""
         self.account = account
         self.project_uid = project_uid
-        self.project_mng = self._fetch_project_manager(account)
-        self.project = self._fetch_project(self.project_mng, project_uid)
-        self.item_mng = self._fetch_item_manager(self.project_mng, self.project)
+        self.project_manager = self._fetch_project_manager(account)
+        self.project = self._fetch_project(self.project_manager, project_uid)
+        self.item_manager = self._fetch_item_manager(self.project_manager, self.project)
 
     def _fetch_project_manager(self, account: Account) -> CollectionManager:
         """Fetch the project manager.
@@ -33,21 +33,21 @@ class Project:
             Instance of the main Etebase class.
         Return
         ------
-        project_mng: CollectionManager
+        project_manager: CollectionManager
             Etebase's collection manager.
         """
         logger.info("fetching project manager...")
-        project_mng = account.get_collection_manager()
+        project_manager = account.get_collection_manager()
         logger.success("project manager fetched.")
 
-        return project_mng
+        return project_manager
 
-    def _fetch_project(self, project_mng: CollectionManager, project_uid: str) -> Collection:
+    def _fetch_project(self, project_manager: CollectionManager, project_uid: str) -> Collection:
         """Fetch project data.
 
         Parameters
         ----------
-        project_mng: CollectionManager
+        project_manager: CollectionManager
             Etebase's collection manager.
         project_uid: str
             Project's uid.
@@ -57,28 +57,28 @@ class Project:
             Project data.
         """
         logger.info("fetching project...")
-        project = project_mng.fetch(project_uid)
+        project = project_manager.fetch(project_uid)
         logger.success("project fetched.")
         return project
 
-    def _fetch_item_manager(self, project_mng: CollectionManager, project: Collection) -> ItemManager:
+    def _fetch_item_manager(self, project_manager: CollectionManager, project: Collection) -> ItemManager:
         """Fetch item manager.
 
         Parameters
         ----------
-        project_mng: ItemManager
+        project_manager: ItemManager
             Etebase's item manager.
         project: Collection
             Project data.
         Return
         ------
-        item_mng: ItemManager
+        item_manager: ItemManager
             Etebase's item manager.
         """
         logger.info("fetching item manager...")
-        item_mng = project_mng.get_item_manager(project)
+        item_manager = project_manager.get_item_manager(project)
         logger.success("item manager fetched.")
-        return item_mng
+        return item_manager
 
     def update_project_data(self, account: Account, project_uid: str) -> None:
         """If the account or the project uid have changed, reset all values."""
@@ -94,7 +94,7 @@ class Project:
     def set_content(self, content: Any) -> None:
         """Set the project's content."""
         self.project.content = content
-        self.project_mng.transaction(self.project)
+        self.project_manager.transaction(self.project)
 
 
 class Gliff:
@@ -320,14 +320,14 @@ class Gliff:
             Instance of the main Etebase class.
         """
 
-        invit_mng = account.get_invitation_manager()
+        invit_manager = account.get_invitation_manager()
 
-        invitations = invit_mng.list_incoming()
+        invitations = invit_manager.list_incoming()
         logger.info(f"pending invitations: {invitations}")
 
         for invitation in list(invitations.data):
 
-            invit_mng.accept(invitation)
+            invit_manager.accept(invitation)
             logger.success("invitations accepted.")
 
     def _leave_project(self, account: Account, project_uid: str) -> None:
@@ -343,8 +343,8 @@ class Gliff:
         self.update_project_data(account, project_uid)
 
         logger.info(f"leaving project, uid: {project_uid}...")
-        memeber_mng = self.project.project_mng.get_member_manager(self.project.project)
-        memeber_mng.leave()
+        memeber_manager = self.project.project_manager.get_member_manager(self.project.project)
+        memeber_manager.leave()
         logger.info("left project.")
 
     def update_project_data(self, account: Account, project_uid: str) -> None:
@@ -384,7 +384,7 @@ class Gliff:
 
         try:
             logger.info(f"fetching item, uid: {item_uid}...")
-            item = self.project.item_mng.fetch(item_uid)
+            item = self.project.item_manager.fetch(item_uid)
             logger.info("item fetched.")
             return item
         except Exception as e:
@@ -607,8 +607,8 @@ class Gliff:
             "modifiedTime": ctime,
         }
 
-        item = self.project.item_mng.create(item_metadata, image_data["encoded_image"])
-        self.project.item_mng.transaction([item])
+        item = self.project.item_manager.create(item_metadata, image_data["encoded_image"])
+        self.project.item_manager.transaction([item])
 
         logger.success("image item created.")
 
@@ -667,7 +667,7 @@ class Gliff:
             "modifiedTime": self.get_current_time(),
         }
 
-        self.project.item_mng.transaction([item])
+        self.project.item_manager.transaction([item])
 
         tile_data = self._create_tile_update(image_labels=image_labels, metadata=metadata)
         self._update_gallery_tile(item_uid, tile_data)
@@ -821,8 +821,8 @@ class Gliff:
 
         item_content = self.encode_content(annotations)
 
-        item: Item = self.project.item_mng.create(item_metadata, item_content)
-        self.project.item_mng.transaction([item])
+        item: Item = self.project.item_manager.create(item_metadata, item_content)
+        self.project.item_manager.transaction([item])
 
         logger.success("annotation item created.")
 
@@ -880,7 +880,7 @@ class Gliff:
 
         item.content = self.encode_content([*prev_annotations, *annotations])
 
-        self.project.item_mng.transaction([item])
+        self.project.item_manager.transaction([item])
 
         logger.success("annotation item updated.")
 
