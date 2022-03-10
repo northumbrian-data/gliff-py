@@ -14,9 +14,9 @@ ToolboxType = Literal["paintbrush", "spline", "boundingBox"]
 
 class Project:
     def __init__(self, account: Account, project_uid: str) -> None:
-        self.reset_values(account, project_uid)
+        self._reset_values(account, project_uid)
 
-    def reset_values(self, account: Account, project_uid: str) -> None:
+    def _reset_values(self, account: Account, project_uid: str) -> None:
         """Reset all project values."""
         self.account = account
         self.project_uid = project_uid
@@ -84,16 +84,18 @@ class Project:
         """If the account or the project uid have changed, reset all values."""
         if account != self.account or project_uid != self.project_uid:
             logger.info("updating project data...")
-            self.reset_values(account, project_uid)
+            self._reset_values(account, project_uid)
             logger.success("updated project data.")
 
-    def get_content(self) -> Any:
+    @property
+    def content(self) -> Any:
         """Get the project's content."""
         return self.project.content
 
-    def set_content(self, content: Any) -> None:
+    @content.setter
+    def content(self, new_content: Any) -> None:
         """Set the project's content."""
-        self.project.content = content
+        self.project.content = new_content
         self.project_manager.transaction(self.project)
 
 
@@ -101,7 +103,7 @@ class Gliff:
     def __init__(self) -> None:
         self.project: Union[Project, None] = None
 
-    def get_value(self, env_variable: str) -> Any:
+    def _get_value(self, env_variable: str) -> Any:
         """
         Use this if you want to enforce (in order of priority):
         1. a passed parameter (env_variable)
@@ -498,7 +500,7 @@ class Gliff:
             logger.error(f"Error while creating a gallery's tile: {e}")
 
     def _get_gallery(self) -> List[Dict[str, Any]]:
-        return self.decode_content(self.project.get_content())
+        return self.decode_content(self.project.content)
 
     def _find_gallery_tile(self, gallery: List[Dict[str, Any]], id: str) -> Union[int, None]:
         """Get the index for the gallery tile corresponding to the image item with
@@ -509,7 +511,7 @@ class Gliff:
         return None
 
     def _set_gallery(self, gallery: List[Dict[str, Any]]) -> None:
-        self.project.set_content(self.encode_content(gallery))
+        self.project.content = self.encode_content(gallery)
 
     def _update_gallery_tile(self, item_uid: str, tile_data: Dict[str, Any]) -> None:
         """Update a tile in the STORE project.
