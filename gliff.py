@@ -147,14 +147,14 @@ class Gliff:
         img_pil.thumbnail(size, Image.ANTIALIAS)
         return self.pil_to_base64_image(img_pil, True)
 
-    def decode_content(self, content: bytes) -> Any:
+    def _decode_content(self, content: bytes) -> Any:
         """Extract and decode project's or item's content, from binary to Dict."""
         try:
             return json.loads(content.decode())
         except json.JSONDecodeError as e:
             logger.warning(f"Error while accessing the project's content: {e}.")
 
-    def encode_content(self, decoded_content: Any) -> bytes:
+    def _encode_content(self, decoded_content: Any) -> bytes:
         """Encode project's or item's content, from Dict to binary."""
         return json.dumps(decoded_content, separators=(",", ":")).encode()
 
@@ -271,7 +271,7 @@ class Gliff:
             "width": width,
             "height": height,
             "thumbnail": self._get_thumbnail_from_pil_image(image_pil),
-            "encoded_image": self.encode_content([[image]]),
+            "encoded_image": self._encode_content([[image]]),
         }
 
     def login(self, access_key: str, server_url: str) -> Any:
@@ -500,7 +500,7 @@ class Gliff:
             logger.error(f"Error while creating a gallery's tile: {e}")
 
     def _get_gallery(self) -> List[Dict[str, Any]]:
-        return self.decode_content(self.project.content)
+        return self._decode_content(self.project.content)
 
     def _find_gallery_tile(self, gallery: List[Dict[str, Any]], id: str) -> Union[int, None]:
         """Get the index for the gallery tile corresponding to the image item with
@@ -511,7 +511,7 @@ class Gliff:
         return None
 
     def _set_gallery(self, gallery: List[Dict[str, Any]]) -> None:
-        self.project.content = self.encode_content(gallery)
+        self.project.content = self._encode_content(gallery)
 
     def _update_gallery_tile(self, item_uid: str, tile_data: Dict[str, Any]) -> None:
         """Update a tile in the STORE project.
@@ -699,7 +699,7 @@ class Gliff:
 
         try:
             item = self.get_project_item(account, project_uid, item_uid)
-            decoded_content = self.decode_content(item.content)
+            decoded_content = self._decode_content(item.content)
 
             image_data: List[List[Image.Image]] = []
             for i_slice in range(len(decoded_content)):
@@ -821,7 +821,7 @@ class Gliff:
             "isComplete": False,
         }
 
-        item_content = self.encode_content(annotations)
+        item_content = self._encode_content(annotations)
 
         item: Item = self.project.item_manager.create(item_metadata, item_content)
         self.project.item_manager.transaction([item])
@@ -874,13 +874,13 @@ class Gliff:
         item = self.get_project_item(account, project_uid, annotation_item_uid)
 
         # if the last annotation is empty, remove it
-        prev_annotations = self.decode_content(item.content)
+        prev_annotations = self._decode_content(item.content)
         if len(prev_annotations) > 0 & self.is_empty_annotation(prev_annotations[-1]):
             prev_annotations.pop()
 
         item.meta = {**item.meta, "modifiedTime": self.get_current_time()}
 
-        item.content = self.encode_content([*prev_annotations, *annotations])
+        item.content = self._encode_content([*prev_annotations, *annotations])
 
         self.project.item_manager.transaction([item])
 
@@ -961,7 +961,7 @@ class Gliff:
             annotation_item_uid = self._get_annotation_uid(account, project_uid, image_item_uid, username)
             if annotation_item_uid is not None:
                 item = self.get_project_item(account, project_uid, annotation_item_uid)
-                return self.decode_content(item.content)
+                return self._decode_content(item.content)
         except Exception as e:
             logger.error(f"Error while fetching an item's annotations: {e}")
         return None
