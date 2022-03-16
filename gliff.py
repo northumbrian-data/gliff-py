@@ -28,7 +28,8 @@ class Project:
             self.item_manager = self._fetch_item_manager(self.project_manager, self.project)
             logger.success("project data fetched.")
 
-    def _fetch_project_manager(self, account: Account) -> CollectionManager:
+    @staticmethod
+    def _fetch_project_manager(account: Account) -> CollectionManager:
         """Fetch the project manager.
 
         Parameters
@@ -46,7 +47,8 @@ class Project:
 
         return project_manager
 
-    def _fetch_project(self, project_manager: CollectionManager, project_uid: str) -> Collection:
+    @staticmethod
+    def _fetch_project(project_manager: CollectionManager, project_uid: str) -> Collection:
         """Fetch project data.
 
         Parameters
@@ -65,7 +67,8 @@ class Project:
         logger.success("project fetched.")
         return project
 
-    def _fetch_item_manager(self, project_manager: CollectionManager, project: Collection) -> ItemManager:
+    @staticmethod
+    def _fetch_item_manager(project_manager: CollectionManager, project: Collection) -> ItemManager:
         """Fetch item manager.
 
         Parameters
@@ -105,7 +108,8 @@ class Gliff:
         if (access_key is not None) & (server_url is not None):
             self.login(access_key, server_url)
 
-    def _get_value(self, env_variable: str) -> Any:
+    @staticmethod
+    def _get_value(env_variable: str) -> Any:
         """
         Use this if you want to enforce (in order of priority):
         1. a passed parameter (env_variable)
@@ -124,14 +128,16 @@ class Gliff:
         except KeyError:
             raise UndefinedValueError(f"{env_variable} not found.")
 
-    def base64_to_pil_image(self, img_base64: Union[str, bytes]) -> Image.Image:
+    @staticmethod
+    def base64_to_pil_image(img_base64: Union[str, bytes]) -> Image.Image:
         """Convert a base64-encoded image into a PIL Image object"""
 
         img_bytes = base64.b64decode(img_base64)
         img_file = BytesIO(img_bytes)
         return Image.open(img_file).convert("RGB")
 
-    def pil_to_base64_image(self, img_pil: Image.Image, is_thumbnail: Optional[bool] = False) -> str:
+    @staticmethod
+    def pil_to_base64_image(img_pil: Image.Image, is_thumbnail: Optional[bool] = False) -> str:
         """Convert a PIL Image object to a base64-encoded image (in bytes)"""
 
         img_file = BytesIO()
@@ -149,22 +155,26 @@ class Gliff:
         img_pil.thumbnail(size, Image.ANTIALIAS)
         return self.pil_to_base64_image(img_pil, True)
 
-    def _decode_content(self, content: bytes) -> Any:
+    @staticmethod
+    def _decode_content(content: bytes) -> Any:
         """Extract and decode project's or item's content, from binary to Dict."""
         try:
             return json.loads(content.decode())
         except json.JSONDecodeError as e:
             logger.warning(f"Error while accessing the project's content: {e}.")
 
-    def _encode_content(self, decoded_content: Any) -> bytes:
+    @staticmethod
+    def _encode_content(decoded_content: Any) -> bytes:
         """Encode project's or item's content, from Dict to binary."""
         return json.dumps(decoded_content, separators=(",", ":")).encode()
 
-    def get_current_time(self) -> int:
+    @staticmethod
+    def get_current_time() -> int:
         """Get the current UTC time as an integer number expressed in milliseconds since the epoch."""
         return int(round(time.time() * 1000))
 
-    def is_empty_annotation(self, annotation: Dict[str, Any]) -> bool:
+    @staticmethod
+    def is_empty_annotation(annotation: Dict[str, Any]) -> bool:
         """Check if an annotation is empty."""
         return (
             (len(annotation["spline"]["coordinates"]) == 0)
@@ -172,8 +182,8 @@ class Gliff:
             & (annotation["boundingBox"]["coordinates"]["topLeft"]["x"] is None)
         )
 
+    @staticmethod
     def create_brush_stroke(
-        self,
         coordinates: List[Union[int, float]],
         spaceTimeInfo: Optional[Dict[str, Any]] = {
             "z": 0,
@@ -194,8 +204,8 @@ class Gliff:
             "brush": brush,
         }
 
+    @staticmethod
     def create_annotation(
-        self,
         toolbox: ToolboxType,
         labels: List[str] = [],
         spline: Optional[Dict[str, Any]] = {
@@ -294,7 +304,7 @@ class Gliff:
         self.account = Account.login(client, username, password)
         logger.success("logged in.")
 
-        self._accept_pending_invitations(self.account)
+        self._accept_pending_invitations()
 
         self.project = Project(self.account)
 
@@ -308,16 +318,10 @@ class Gliff:
             self.project = None
         logger.success("logged out.")
 
-    def _accept_pending_invitations(self, account: Account) -> None:
-        """Accept all pending invitations to join a STORE project.
+    def _accept_pending_invitations(self) -> None:
+        """Accept all pending invitations to join a STORE project."""
 
-        Parameters
-        ----------
-        account: Account
-            Instance of the main Etebase class.
-        """
-
-        invit_manager = account.get_invitation_manager()
+        invit_manager = self.account.get_invitation_manager()
 
         invitations = invit_manager.list_incoming()
         logger.info(f"pending invitations: {invitations}")
@@ -381,8 +385,8 @@ class Gliff:
         except Exception as e:
             logger.error(f"error while fetching image: {e}.")
 
+    @staticmethod
     def _create_tile_update(
-        self,
         image_labels: Optional[List[str]] = None,
         metadata: Dict[str, Any] = {},
         annotation_uid: Dict[str, str] = {},
@@ -422,8 +426,8 @@ class Gliff:
 
         return tile
 
+    @staticmethod
     def _create_new_tile(
-        self,
         image_item_uid: str,
         thumbnail: str,
         image_labels: List[str] = [],
@@ -491,7 +495,8 @@ class Gliff:
     def _get_gallery(self) -> List[Dict[str, Any]]:
         return self._decode_content(self.project.content)
 
-    def _find_gallery_tile(self, gallery: List[Dict[str, Any]], id: str) -> Union[int, None]:
+    @staticmethod
+    def _find_gallery_tile(gallery: List[Dict[str, Any]], id: str) -> Union[int, None]:
         """Get the index for the gallery tile corresponding to the image item with
         uid equal to the galler's id (or equal to the imageUID field)."""
         for i, tile in enumerate(gallery):
