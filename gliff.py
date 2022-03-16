@@ -349,7 +349,7 @@ class Gliff:
 
     def _has_project(self) -> bool:
         if self.project is None:
-            logger.error("Authentication error: you need to log in to a STORE account to use this method.")
+            logger.warning("Please log in to a STORE account to use this method.")
             return False
         return True
 
