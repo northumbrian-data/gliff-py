@@ -13,16 +13,20 @@ ToolboxType = Literal["paintbrush", "spline", "boundingBox"]
 
 
 class Project:
-    def __init__(self, account: Account, project_uid: str) -> None:
-        self._reset_values(account, project_uid)
-
-    def _reset_values(self, account: Account, project_uid: str) -> None:
-        """Reset all project values."""
-        self.account = account
-        self.project_uid = project_uid
+    def __init__(self, account: Account) -> None:
         self.project_manager = self._fetch_project_manager(account)
-        self.project = self._fetch_project(self.project_manager, project_uid)
-        self.item_manager = self._fetch_item_manager(self.project_manager, self.project)
+        self.project = None
+        self.item_manager = None
+
+    def _fetch_project_data(self, project_uid: str) -> None:
+        """Fetch project data if project is not set or has changed."""
+
+        if (self.project is None) or (self.project.uid != project_uid):
+
+            logger.info("fetching project data...")
+            self.project = self._fetch_project(self.project_manager, project_uid)
+            self.item_manager = self._fetch_item_manager(self.project_manager, self.project)
+            logger.success("project data fetched.")
 
     def _fetch_project_manager(self, account: Account) -> CollectionManager:
         """Fetch the project manager.
@@ -80,28 +84,26 @@ class Project:
         logger.success("item manager fetched.")
         return item_manager
 
-    def update_project_data(self, account: Account, project_uid: str) -> None:
-        """If the account or the project uid have changed, reset all values."""
-        if account != self.account or project_uid != self.project_uid:
-            logger.info("updating project data...")
-            self._reset_values(account, project_uid)
-            logger.success("updated project data.")
-
     @property
     def content(self) -> Any:
         """Get the project's content."""
-        return self.project.content
+        return self.project.content if (self.project is not None) else None
 
     @content.setter
     def content(self, new_content: Any) -> None:
         """Set the project's content."""
-        self.project.content = new_content
-        self.project_manager.transaction(self.project)
+        if self.project is not None:
+            self.project.content = new_content
+            self.project_manager.transaction(self.project)
 
 
 class Gliff:
-    def __init__(self) -> None:
-        self.project: Union[Project, None] = None
+    def __init__(self, access_key: Optional[str] = None, server_url: Optional[str] = None) -> None:
+        self.account: Optional[Account] = None
+        self.project: Optional[Project] = None
+
+        if (access_key is not None) & (server_url is not None):
+            self.login(access_key, server_url)
 
     def _get_value(self, env_variable: str) -> Any:
         """
@@ -274,7 +276,7 @@ class Gliff:
             "encoded_image": self._encode_content([[image]]),
         }
 
-    def login(self, access_key: str, server_url: str) -> Any:
+    def login(self, access_key: str, server_url: str) -> None:
         """Log in to STORE.
 
         Parameters
@@ -283,34 +285,27 @@ class Gliff:
             Plugin's access key.
         server_url: str
             Server URL.
-        Returns
-        -------
-        account: Account
-            Instance of the main Etebase class.
         """
 
         logger.info("logging in to STORE...")
 
         client = Client("client-name", server_url)
         username, password = base64.b64decode(access_key).decode("ascii").split(":")
-        account = Account.login(client, username, password)
+        self.account = Account.login(client, username, password)
         logger.success("logged in.")
 
-        self._accept_pending_invitations(account)
+        self._accept_pending_invitations(self.account)
 
-        return account
+        self.project = Project(self.account)
 
-    def logout(self, account: Account) -> None:
-        """Log out of STORE.
-
-        Parameters
-        ----------
-        account: Account
-            Instance of the main Etebase class.
-        """
+    def logout(self) -> None:
+        """Log out of STORE."""
 
         logger.info("logging out...")
-        account.logout()
+        if self.account is not None:
+            self.account.logout()
+            self.account = None
+            self.project = None
         logger.success("logged out.")
 
     def _accept_pending_invitations(self, account: Account) -> None:
@@ -332,46 +327,37 @@ class Gliff:
             invit_manager.accept(invitation)
             logger.success("invitations accepted.")
 
-    def _leave_project(self, account: Account, project_uid: str) -> None:
+    def _leave_project(self, project_uid: str) -> None:
         """Leave a project.
 
         Parameters
         ----------
-        account: Account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         """
-        self.update_project_data(account, project_uid)
+
+        if self.project is None:
+
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         logger.info(f"leaving project, uid: {project_uid}...")
         memeber_manager = self.project.project_manager.get_member_manager(self.project.project)
         memeber_manager.leave()
         logger.info("left project.")
 
-    def update_project_data(self, account: Account, project_uid: str) -> None:
-        """Update project data if either account or project_uid have changed.
-
-        Parameters:
-        -----------
-        account: Account
-            Instance of the main Etebase class.
-        project_uid: str
-            Project's uid.
-        """
-
+    def _has_project(self) -> bool:
         if self.project is None:
-            self.project = Project(account, project_uid)
-        else:
-            self.project.update_project_data(account, project_uid)
+            logger.error("Authentication error: you need to log in to a STORE account to use this method.")
+            return False
+        return True
 
-    def get_project_item(self, account: Account, project_uid: str, item_uid: str) -> Item:
+    def get_project_item(self, project_uid: str, item_uid: str) -> Item:
         """Retrieve a project's item.
 
         Parameters
         ----------
-        account: Account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         item_uid: str
@@ -382,7 +368,10 @@ class Gliff:
             Project's item
         """
 
-        self.update_project_data(account, project_uid)
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         try:
             logger.info(f"fetching item, uid: {item_uid}...")
@@ -563,7 +552,6 @@ class Gliff:
 
     def upload_image(
         self,
-        account: Account,
         project_uid: str,
         name: str,
         image: Union[str, Image.Image],
@@ -574,8 +562,6 @@ class Gliff:
 
         Parameters
         ----------
-        account: Account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         name: str
@@ -593,7 +579,10 @@ class Gliff:
 
         logger.info("creating new image item...")
 
-        self.update_project_data(account, project_uid)
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         # process the input image
         image_data = self._process_image_data(image)
@@ -633,7 +622,6 @@ class Gliff:
 
     def update_metadata_and_labels(
         self,
-        account: Account,
         project_uid: str,
         item_uid: str,
         image_labels: Union[List[str], None] = None,
@@ -643,8 +631,6 @@ class Gliff:
 
         Parameters
         ----------
-        account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         item_uid: str
@@ -657,12 +643,12 @@ class Gliff:
 
         logger.info("updating image item's metadata...")
 
-        if not metadata and not image_labels:
+        if (not metadata and not image_labels) or not self._has_project():
             return None
 
-        self.update_project_data(account, project_uid)
+        self.project._fetch_project_data(project_uid)
 
-        item = self.get_project_item(account, project_uid, item_uid)
+        item = self.get_project_item(project_uid, item_uid)
 
         item.meta = {
             **item.meta,
@@ -676,13 +662,11 @@ class Gliff:
 
         logger.success("metadata updated.")
 
-    def get_image_data(self, account: Account, project_uid: str, item_uid: str) -> Union[List[List[Image.Image]], None]:
+    def get_image_data(self, project_uid: str, item_uid: str) -> Union[List[List[Image.Image]], None]:
         """Get the image data from an image item.
 
         Parameters
         ----------
-        account: Account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         item_uid: str
@@ -693,12 +677,15 @@ class Gliff:
             Image item's decoded content.
         """
 
-        self.update_project_data(account, project_uid)
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         logger.info(f"fetching item's image data, uid: {item_uid}...")
 
         try:
-            item = self.get_project_item(account, project_uid, item_uid)
+            item = self.get_project_item(project_uid, item_uid)
             decoded_content = self._decode_content(item.content)
 
             image_data: List[List[Image.Image]] = []
@@ -713,13 +700,11 @@ class Gliff:
             logger.error(f"Error while fetching an item's image data: {e}")
         return None
 
-    def get_metadata_and_labels(self, account: Account, project_uid: str, item_uid: str) -> Union[Dict[str, Any], None]:
+    def get_metadata_and_labels(self, project_uid: str, item_uid: str) -> Union[Dict[str, Any], None]:
         """Retrieve an image's metadata and image-wise labels.
 
         Parameters
         ----------
-        account: Account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         item_uid: str
@@ -732,7 +717,10 @@ class Gliff:
             Image labels.
         """
 
-        self.update_project_data(account, project_uid)
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         try:
             gallery = self._get_gallery()
@@ -745,16 +733,12 @@ class Gliff:
             logger.error(f"error while retrieving image item's metadata: {e}")
         return None
 
-    def _get_annotation_uid(
-        self, account: Account, project_uid: str, image_item_uid: str, username: str
-    ) -> Union[str, None]:
+    def _get_annotation_uid(self, project_uid: str, image_item_uid: str, username: str) -> Union[str, None]:
         """Check whether there exists an annotation made by a user with corresponding username and for an image
         item with uid equal to image_item_uid and return the annotation item's uid.
 
         Parameters
         ----------
-        account: Account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         image_item_uid: str
@@ -766,7 +750,10 @@ class Gliff:
         item_uid: Union[str, None]
             Annotation item's uid.
         """
-        self.update_project_data(account, project_uid)
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         gallery = self._get_gallery()
 
@@ -780,7 +767,6 @@ class Gliff:
 
     def _create_annotation_item(
         self,
-        account: Account,
         project_uid: str,
         image_item_uid: str,
         username: str,
@@ -791,8 +777,6 @@ class Gliff:
 
         Parameters
         ----------
-        account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         image_item_uid: str
@@ -811,7 +795,10 @@ class Gliff:
 
         logger.info("creating new annotation item...")
 
-        self.update_project_data(account, project_uid)
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         ctime = self.get_current_time()
         item_metadata = {
@@ -837,7 +824,6 @@ class Gliff:
 
     def _update_annotation_item(
         self,
-        account: Account,
         project_uid: str,
         image_item_uid: str,
         annotation_item_uid: str,
@@ -848,8 +834,6 @@ class Gliff:
 
         Parameters
         ----------
-        account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         image_item_uid: str
@@ -867,11 +851,14 @@ class Gliff:
             Annotation item's uid.
         """
 
-        self.update_project_data(account, project_uid)
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         logger.info(f"updating annotation item, uid: {annotation_item_uid}...")
 
-        item = self.get_project_item(account, project_uid, annotation_item_uid)
+        item = self.get_project_item(project_uid, annotation_item_uid)
 
         # if the last annotation is empty, remove it
         prev_annotations = self._decode_content(item.content)
@@ -894,7 +881,6 @@ class Gliff:
 
     def upload_annotation(
         self,
-        account: Account,
         project_uid: str,
         image_item_uid: str,
         username: str,
@@ -905,8 +891,6 @@ class Gliff:
 
         Parameters
         ----------
-        account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         image_item_uid: str
@@ -923,27 +907,25 @@ class Gliff:
             Annotation item's uid.
         """
 
-        annotation_item_uid = self._get_annotation_uid(account, project_uid, image_item_uid, username)
+        annotation_item_uid = self._get_annotation_uid(project_uid, image_item_uid, username)
 
         if annotation_item_uid is None:
             annotation_item_uid = self._create_annotation_item(
-                account, project_uid, image_item_uid, username, annotations=annotations, metadata=metadata
+                project_uid, image_item_uid, username, annotations=annotations, metadata=metadata
             )
         else:
             self._update_annotation_item(
-                account, project_uid, image_item_uid, annotation_item_uid, annotations=annotations, metadata=metadata
+                project_uid, image_item_uid, annotation_item_uid, annotations=annotations, metadata=metadata
             )
         return annotation_item_uid
 
     def get_annotations(
-        self, account: Account, project_uid: str, image_item_uid: str, username: str
+        self, project_uid: str, image_item_uid: str, username: str
     ) -> Union[List[Dict[str, Any]], None]:
         """Get all the annotations from an annotation item.
 
         Parameters
         ----------
-        account: Account
-            Instance of the main Etebase class.
         project_uid: str
             Project's uid.
         image_item_uid: str
@@ -955,13 +937,20 @@ class Gliff:
         annotations: Union[List[Dict], None]
             Annotations data.
         """
-        self.update_project_data(account, project_uid)
+
+        if not self._has_project():
+            return None
+
+        self.project._fetch_project_data(project_uid)
 
         try:
-            annotation_item_uid = self._get_annotation_uid(account, project_uid, image_item_uid, username)
+            annotation_item_uid = self._get_annotation_uid(project_uid, image_item_uid, username)
             if annotation_item_uid is not None:
-                item = self.get_project_item(account, project_uid, annotation_item_uid)
+                item = self.get_project_item(project_uid, annotation_item_uid)
                 return self._decode_content(item.content)
         except Exception as e:
             logger.error(f"Error while fetching an item's annotations: {e}")
         return None
+
+    def __del__(self) -> None:
+        self.logout()
