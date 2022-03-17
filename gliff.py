@@ -73,7 +73,7 @@ class Project:
 
         Parameters
         ----------
-        project_manager: ItemManager
+        project_manager: CollectionManager
             Etebase's item manager.
         project: Collection
             Project data.
@@ -223,12 +223,15 @@ class Gliff:
         brush_strokes: Optional[List[Optional[Dict[str, Any]]]] = [],
         parameters: Optional[Dict[str, Any]] = {},
     ) -> Dict[str, Any]:
-        """Create an annotation.
+        """Create an annotation. Toolbox, the only required parameter, defines the annotation's type,
+        based on the toolbox used for creating it. In each annotation you can set either the spline,
+        the bounding_box or the brush_strokes parameter, depending on the value passed for toolbox.
+
 
         Parameters:
         -----------
-        tooltip: Toolbox
-            Annotate toolbox.
+        toolbox: Toolbox
+            Toolbox used for creating the annotation.
         labels: List[str]
             Image-wise labels.
         spline: Optional[Dict]
@@ -242,7 +245,7 @@ class Gliff:
         Return:
         -------
         annotation:
-            Annotation (empty by default)
+            Annotation (empty by default).
 
         """
 
@@ -458,7 +461,7 @@ class Gliff:
         Returns:
         --------
         tile: Dist
-            Gallery tile.
+            Gallery tile (empty by default).
         """
 
         return {
