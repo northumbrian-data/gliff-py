@@ -27,7 +27,7 @@ include = ["LICENSE",]
 python = "^3.9"
 python-decouple = "^3.5"
 loguru = "^0.5.3"
-etebase = "^0.31.2"
+etebase = "^0.31.5"
 Pillow = "^8.4.0"
 
 [tool.poetry.dev-dependencies]
