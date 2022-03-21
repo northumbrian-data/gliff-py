@@ -1,0 +1,29 @@
+name: Lint & Test
+on: push
+
+jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: install poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: update poetry dependencies
+        run: |
+          poetry install --no-interaction --no-root
+      - name: lint
+        run: poetry run lint
+      - name: format
+        run: poetry run format
