@@ -1,42 +1,30 @@
 [tool.black]
 line-length = 120
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
 
 [tool.poetry]
 name = "gliff"
 version = "0.1.0"
-description = "gliff.ai SDK - a Python SDL for developing AI-in-the-loop trusted services for the gliff.ai platform"
+description = "gliff.ai SDK - a Python SDK for developing Python script or AI-in-the-loop trusted services for the gliff.ai platform"
 authors = ["Chas Nelson <chas@gliff.ai>"]
 license = "AGPL-3.0-or-later"
 include = ["LICENSE",]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "~3.9.10"
 python-decouple = "^3.5"
-loguru = "^0.5.3"
+loguru = "^0.6.0"
 etebase = "^0.31.2"
-Pillow = "^8.4.0"
+Pillow = "^9.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
 flake8 = "^4.0.1"
-black = "^21.10b0"
+black = "22.1.0"
 mypy = "^0.931"
 
 [tool.poetry.scripts]
+lint = "flake8.main.cli:main"
+format = "black:main('.')"
 
 [tool.mypy]
 strict = true
