@@ -24,7 +24,6 @@ mypy = "^0.931"
 
 [tool.poetry.scripts]
 lint = "flake8.main.cli:main"
-format = "black:main('.')"
 
 [tool.mypy]
 strict = true
