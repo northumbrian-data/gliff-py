@@ -24,4 +24,4 @@ jobs:
       - name: lint
         run: poetry run lint
       - name: format
-        run: poetry run format
+        run: poetry run black .
