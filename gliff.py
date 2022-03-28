@@ -195,7 +195,7 @@ class Gliff:
             "color": "rgba(170, 0, 0, 0.5)",
             "is3D": False,
         },
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """Create a brush stroke annotation."""
 
         return {
@@ -203,6 +203,32 @@ class Gliff:
             "spaceTimeInfo": spaceTimeInfo,
             "brush": brush,
         }
+
+    @staticmethod
+    def create_spline(
+        coordinates: List[Dict[str, Union[int, float]]],
+        spaceTimeInfo: Optional[Dict[str, Union[int, float]]] = {"z": 0, "t": 0},
+        isClosed: Optional[bool] = False,
+    ) -> Dict[str, Any]:
+        """Create a spline annotation."""
+        return {"coordinates": coordinates, "spaceTimeInfo": spaceTimeInfo, "isClosed": isClosed}
+
+    @staticmethod
+    def create_bounding_box(
+        topLeft: Dict[str, Union[int, float]],
+        bottomRight: Dict[str, Union[int, float]],
+        spaceTimeInfo: Optional[Dict[str, Union[int, float]]] = {"z": 0, "t": 0},
+    ) -> Dict[str, Any]:
+        """Create a bounding-box annotation."""
+        return {
+            "coordinates": {"topLeft": topLeft, "bottomRight": bottomRight},
+            "spaceTimeInfo": spaceTimeInfo,
+        }
+
+    @staticmethod
+    def create_xypoint(x: Union[int, float], y: Union[int, float]) -> Dict[str, Union[int, float]]:
+        """Create an (x,y) point."""
+        return {"x": x, "y": y}
 
     @staticmethod
     def create_annotation(
