@@ -175,7 +175,16 @@ class Gliff:
 
     @staticmethod
     def is_empty_annotation(annotation: Dict[str, Any]) -> bool:
-        """Check if an annotation is empty."""
+        """Check whether an annotation is empty.
+
+        Parameters:
+        -----------
+        annotation: Dict
+            An annotation object.
+        Returns:
+        --------
+            Boolean for wether the annotation passed as input is empty or not.
+        """
         return (
             (len(annotation["spline"]["coordinates"]) == 0)
             & (len(annotation["brushStrokes"]) == 0)
@@ -185,7 +194,7 @@ class Gliff:
     @staticmethod
     def create_brush_stroke(
         coordinates: List[Union[int, float]],
-        spaceTimeInfo: Optional[Dict[str, Any]] = {
+        space_time_info: Optional[Dict[str, Any]] = {
             "z": 0,
             "t": 0,
         },
@@ -195,14 +204,77 @@ class Gliff:
             "color": "rgba(170, 0, 0, 0.5)",
             "is3D": False,
         },
-    ) -> Optional[Dict[str, Any]]:
-        """Create a brush stroke annotation."""
+    ) -> Dict[str, Any]:
+        """Create a brush stroke annotation.
+
+        Parameters:
+        -----------
+        coordinates: List
+            A list of (x,y) coordinates that defines the brush connected strokes.
+        space_time_info:
+            The z- (slice number) and t- (time point) coordinates (defaults to first slice and time point).
+        Returns:
+        -------
+            The new brush-stroke object.
+        """
 
         return {
             "coordinates": coordinates,
-            "spaceTimeInfo": spaceTimeInfo,
+            "spaceTimeInfo": space_time_info,
             "brush": brush,
         }
+
+    @staticmethod
+    def create_spline(
+        coordinates: List[Dict[str, Union[int, float]]],
+        space_time_info: Optional[Dict[str, Union[int, float]]] = {"z": 0, "t": 0},
+        is_closed: Optional[bool] = False,
+    ) -> Dict[str, Any]:
+        """Create a spline annotation.
+
+        Parameters:
+        -----------
+        coordinates: Dict
+            A list of (x,y) coordinates that defines the spline points.
+        space_time_info: Dict
+            The z- (slice number) and t- (time point) coordinates (defaults to first slice and time point).
+        is_closed: bool
+            Whether the spline is closed or open (defaults to false).
+        Returns:
+        -------
+            The new spline object.
+        """
+        return {"coordinates": coordinates, "spaceTimeInfo": space_time_info, "isClosed": is_closed}
+
+    @staticmethod
+    def create_bounding_box(
+        top_left: Dict[str, Union[int, float]],
+        bottom_right: Dict[str, Union[int, float]],
+        space_time_info: Optional[Dict[str, Union[int, float]]] = {"z": 0, "t": 0},
+    ) -> Dict[str, Any]:
+        """Create a bounding-box annotation.
+
+        Parameters:
+        -----------
+        top_left: Dict
+            The (x,y) coordinates for the top-left box corner.
+        bottom_right: Dict
+            The (x,y) coordinates for the bottom-right box corner.
+        space_time_info: Dict
+            The z- (slice number) and t- (time point) coordinates (defaults to first slice and time point).
+        Returns:
+        -------
+            The new bouding-box object.
+        """
+        return {
+            "coordinates": {"topLeft": top_left, "bottomRight": bottom_right},
+            "spaceTimeInfo": space_time_info,
+        }
+
+    @staticmethod
+    def create_xypoint(x: Union[int, float], y: Union[int, float]) -> Dict[str, Union[int, float]]:
+        """Create an (x,y) point."""
+        return {"x": x, "y": y}
 
     @staticmethod
     def create_annotation(
@@ -224,8 +296,8 @@ class Gliff:
         parameters: Optional[Dict[str, Any]] = {},
     ) -> Dict[str, Any]:
         """Create an annotation. Toolbox, the only required parameter, defines the annotation's type,
-        based on the toolbox used for creating it. In each annotation you can set either the spline,
-        the bounding_box or the brush_strokes parameter, depending on the value passed for toolbox.
+        which corresponds to the toolbox used for creating it. Depending on the value passed for toolbox,
+        a non-empty annotation should have either the spline, the bounding_box or the brush_strokes parameter set.
 
 
         Parameters:
@@ -248,7 +320,6 @@ class Gliff:
             Annotation (empty by default).
 
         """
-
         return {
             "toolbox": toolbox,
             "labels": labels,
