@@ -16,17 +16,6 @@ class Project:
     def __init__(self, account: Account) -> None:
         self.project_manager = self._fetch_project_manager(account)
         self.project = None
-        self.item_manager = None
-
-    def _fetch_project_data(self, project_uid: str) -> None:
-        """Fetch project data if project is not set or has changed."""
-
-        if (self.project is None) or (self.project.uid != project_uid):
-
-            logger.info("fetching project data...")
-            self.project = self._fetch_project(self.project_manager, project_uid)
-            self.item_manager = self._fetch_item_manager(self.project_manager, self.project)
-            logger.success("project data fetched.")
 
     @staticmethod
     def _fetch_project_manager(account: Account) -> CollectionManager:
@@ -47,45 +36,20 @@ class Project:
 
         return project_manager
 
-    @staticmethod
-    def _fetch_project(project_manager: CollectionManager, project_uid: str) -> Collection:
-        """Fetch project data.
+    def _fetch_project(self, project_uid: str) -> None:
+        """Fetch project data if project is not set or has changed.
 
         Parameters
         ----------
-        project_manager: CollectionManager
-            Etebase's collection manager.
         project_uid: str
             Project's uid.
-        Return
-        ------
-        project: Collection
-            Project data.
         """
-        logger.info("fetching project...")
-        project = project_manager.fetch(project_uid)
-        logger.success("project fetched.")
-        return project
 
-    @staticmethod
-    def _fetch_item_manager(project_manager: CollectionManager, project: Collection) -> ItemManager:
-        """Fetch item manager.
+        if (self.project is None) or (self.project.uid != project_uid):
 
-        Parameters
-        ----------
-        project_manager: CollectionManager
-            Etebase's item manager.
-        project: Collection
-            Project data.
-        Return
-        ------
-        item_manager: ItemManager
-            Etebase's item manager.
-        """
-        logger.info("fetching item manager...")
-        item_manager = project_manager.get_item_manager(project)
-        logger.success("item manager fetched.")
-        return item_manager
+            logger.info("fetching project...")
+            self.project = self.project_manager.fetch(project_uid)
+            logger.success("project fetched.")
 
     @property
     def content(self) -> Any:
@@ -418,7 +382,7 @@ class Gliff:
 
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         logger.info(f"leaving project, uid: {project_uid}...")
         memeber_manager = self.project.project_manager.get_member_manager(self.project.project)
@@ -449,11 +413,11 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         try:
             logger.info(f"fetching item, uid: {item_uid}...")
-            item = self.project.item_manager.fetch(item_uid)
+            item = self.project.project_manager.fetch(item_uid)
             logger.info("item fetched.")
             return item
         except Exception as e:
@@ -661,7 +625,7 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         # process the input image
         image_data = self._process_image_data(image)
@@ -670,15 +634,27 @@ class Gliff:
 
         # create a new gliff.image item and upload it to the project
         ctime = self.get_current_time()
-        item_metadata = {
-            "type": "gliff.image",
+        item_type = "gliff.image"
+
+        file_info = {
             "imageName": name,
+            "width": image_data["width"],
+            "height": image_data["height"],
+            **metadata,
+        }
+
+        item_metadata = {
+            "meta_version": 0,
+            "content_version": 0,
+            "type": item_type,
+            "name": name,
+            "fileInfo": file_info,
             "createdTime": ctime,
             "modifiedTime": ctime,
         }
 
-        item = self.project.item_manager.create(item_metadata, image_data["encoded_image"])
-        self.project.item_manager.transaction([item])
+        item = self.project.project_manager.create(item_type, item_metadata, image_data["encoded_image"])
+        self.project.project_manager.upload(item)
 
         logger.success("image item created.")
 
@@ -687,12 +663,7 @@ class Gliff:
             item.uid,
             image_data["thumbnail"],
             image_labels,
-            metadata={
-                "imageName": name,
-                "width": image_data["width"],
-                "height": image_data["height"],
-                **metadata,
-            },
+            metadata=file_info,
         )
 
         self._create_gallery_tile(new_tile)
@@ -725,7 +696,7 @@ class Gliff:
         if (not metadata and not image_labels) or not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         item = self.get_project_item(project_uid, item_uid)
 
@@ -734,7 +705,7 @@ class Gliff:
             "modifiedTime": self.get_current_time(),
         }
 
-        self.project.item_manager.transaction([item])
+        self.project.project_manager.transaction(item)
 
         tile_data = self._create_tile_update(image_labels=image_labels, metadata=metadata)
         self._update_gallery_tile(item_uid, tile_data)
@@ -759,7 +730,7 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         logger.info(f"fetching item's image data, uid: {item_uid}...")
 
@@ -799,7 +770,7 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         try:
             gallery = self._get_gallery()
@@ -832,7 +803,7 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         gallery = self._get_gallery()
 
@@ -877,11 +848,14 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         ctime = self.get_current_time()
+        item_type = "gliff.annotation"
         item_metadata = {
-            "type": "gliff.annotation",
+            "meta_version": 1,
+            "content_version": 0,
+            "type": item_type,
             "createdTime": ctime,
             "modifiedTime": ctime,
             "isComplete": False,
@@ -889,8 +863,8 @@ class Gliff:
 
         item_content = self._encode_content(annotations)
 
-        item: Item = self.project.item_manager.create(item_metadata, item_content)
-        self.project.item_manager.transaction([item])
+        item: Item = self.project.project_manager.create(item_type, item_metadata, item_content)
+        self.project.project_manager.upload(item)
 
         logger.success("annotation item created.")
 
@@ -933,7 +907,7 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         logger.info(f"updating annotation item, uid: {annotation_item_uid}...")
 
@@ -948,7 +922,7 @@ class Gliff:
 
         item.content = self._encode_content([*prev_annotations, *annotations])
 
-        self.project.item_manager.transaction([item])
+        self.project.project_manager.transaction(item)
 
         logger.success("annotation item updated.")
 
@@ -1020,7 +994,7 @@ class Gliff:
         if not self._has_project():
             return None
 
-        self.project._fetch_project_data(project_uid)
+        self.project._fetch_project(project_uid)
 
         try:
             annotation_item_uid = self._get_annotation_uid(project_uid, image_item_uid, username)
