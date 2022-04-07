@@ -741,7 +741,7 @@ class Gliff:
 
         logger.success("metadata updated.")
 
-    def get_image_data(self, project_uid: str, item_uid: str) -> Union[List[List[Image.Image]], None]:
+    def get_image_data(self, project_uid: str, item_uid: str) -> Union[Image.Image, None]:
         """Get the image data from an image item.
 
         Parameters
@@ -773,8 +773,20 @@ class Gliff:
                 for i_channel in range(len(decoded_content[i_slice])):
                     image_data[i_slice].append(self.base64_to_pil_image(decoded_content[i_slice][i_channel]))
 
+            num_channels = len(image_data[0])
+            if num_channels == 1:
+                image_pil = image_data[0][0]
+
+            elif num_channels == 3:
+                red, green, blue = [img.getchannel(i) for i, img in enumerate(image_data[0])]
+                image_pil = Image.merge("RGB", (red, green, blue))
+
+            else:
+                logger.error(f"Images with {num_channels} channels are not supported.")
+                return None
+
             logger.success("image data fetched.")
-            return image_data
+            return image_pil
         except Exception as e:
             logger.error(f"Error while fetching an item's image data: {e}")
         return None
