@@ -10,7 +10,7 @@ license = "AGPL-3.0-or-later"
 include = ["LICENSE",]
 
 [tool.poetry.dependencies]
-python = "~3.9.7"
+python = "^3.9.7"
 python-decouple = "^3.5"
 loguru = "^0.6.0"
 etebase = "^0.31.2"
