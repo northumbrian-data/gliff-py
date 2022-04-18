@@ -372,8 +372,11 @@ class Gliff:
         """
 
         logger.info("logging in to STORE...")
-
+        logger.debug(server_url)
+        
         client = Client("client-name", server_url)
+        logger.debug(client)
+
         username, password = base64.b64decode(access_key).decode("ascii").split(":")
         self.account = Account.login(client, username, password)
         logger.success("logged in.")
