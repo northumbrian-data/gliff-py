@@ -20,7 +20,7 @@ Pillow = "^9.1.0"
 pytest = "^6.2"
 flake8 = "^4.0.1"
 black = "22.1.0"
-mypy = "^0.931"
+mypy = "^0.942"
 
 [tool.poetry.scripts]
 lint = "flake8.main.cli:main"
