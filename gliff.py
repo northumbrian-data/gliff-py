@@ -490,7 +490,7 @@ class Gliff:
         """
 
         tile = {
-            "metadata": metadata,
+            "fileInfo": metadata,
             "annotationUID": annotation_uid,
             "auditUID": audit_uid,
             "annotationComplete": annotation_complete,
@@ -540,7 +540,7 @@ class Gliff:
             "id": image_item_uid,
             "thumbnail": thumbnail,
             "imageLabels": image_labels,
-            "metadata": metadata,
+            "fileInfo": metadata,
             "imageUID": image_item_uid,
             "annotationUID": annotation_uid,
             "auditUID": audit_uid,
@@ -602,7 +602,7 @@ class Gliff:
             **kwargs: Any,
         ) -> Dict[str, Any]:
             if metadata is not None:
-                tile["metadata"].update(metadata)
+                tile["fileInfo"].update(metadata)
             if annotationUID is not None:
                 tile["annotationUID"].update(annotationUID)
             if auditUID is not None:
@@ -819,7 +819,7 @@ class Gliff:
 
             index = self._find_gallery_tile(gallery, item_uid)
 
-            return gallery[index]["metadata"], gallery[index]["imageLabels"]
+            return gallery[index]["fileInfo"], gallery[index]["imageLabels"]
 
         except Exception as e:
             logger.error(f"error while retrieving image item's metadata: {e}")
