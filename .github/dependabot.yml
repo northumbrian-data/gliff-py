@@ -3,12 +3,17 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/.github/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     reviewers:
-      - "gliff-ai/techteam"
+      - "gliff-ai/ci-cd"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     reviewers:
-      - "gliff-ai/techteam"
+      - "gliff-ai/backend"
+    ignore:
+      # ignore all minor and patch updates as caught by gliff-ai-robot
+      - dependency-name: "*"
+        update-types:
+          ["version-update:semver-minor", "version-update:semver-patch"]
