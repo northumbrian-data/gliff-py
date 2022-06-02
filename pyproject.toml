@@ -14,7 +14,7 @@ python = "~3.9.10"
 python-decouple = "^3.5"
 loguru = "^0.6.0"
 etebase = "^0.31.2"
-Pillow = "^9.1.0"
+Pillow = "^9.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
