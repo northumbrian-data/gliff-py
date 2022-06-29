@@ -10,7 +10,7 @@ license = "AGPL-3.0-or-later"
 include = ["LICENSE",]
 
 [tool.poetry.dependencies]
-python = "~3.9.10"
+python = "^3.9.7"
 python-decouple = "^3.5"
 loguru = "^0.6.0"
 etebase = "^0.31.2"
@@ -18,8 +18,8 @@ Pillow = "^9.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
+black = "^22.3.0"
 flake8 = "^4.0.1"
-black = "22.1.0"
 mypy = "^0.931"
 
 [tool.poetry.scripts]
