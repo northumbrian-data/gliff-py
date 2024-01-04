@@ -1,19 +1,19 @@
-version: 2
-updates:
-  - package-ecosystem: "github-actions"
-    directory: "/.github/"
-    schedule:
-      interval: "monthly"
-    reviewers:
-      - "gliff-ai/ci-cd"
-  - package-ecosystem: "pip"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    reviewers:
-      - "gliff-ai/backend"
-    ignore:
-      # ignore all minor and patch updates as caught by gliff-ai-robot
-      - dependency-name: "*"
-        update-types:
-          ["version-update:semver-minor", "version-update:semver-patch"]
+# version: 2
+# updates:
+#   - package-ecosystem: "github-actions"
+#     directory: "/.github/"
+#     schedule:
+#       interval: "monthly"
+#     reviewers:
+#       - "gliff-ai/ci-cd"
+#   - package-ecosystem: "pip"
+#     directory: "/"
+#     schedule:
+#       interval: "monthly"
+#     reviewers:
+#       - "gliff-ai/backend"
+#     ignore:
+#       # ignore all minor and patch updates as caught by gliff-ai-robot
+#       - dependency-name: "*"
+#         update-types:
+#           ["version-update:semver-minor", "version-update:semver-patch"]
